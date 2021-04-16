@@ -6,15 +6,57 @@ public class BeachArcade implements Bot {
 	// BeachArcade may not alter the state of the board or the player objects
 	// It may only inspect the state of the board and the player objects
 	// So you can use player.getNumUnits() but you can't use player.addUnits(10000), for example
-	
+
+	private static class Country {
+		public int occupierID;
+		public int numUnits;
+
+		public Country() {
+			occupierID = -1;
+			numUnits = -1;
+		}
+
+		public void setNumUnits(int numUnits) {
+			this.numUnits = numUnits;
+		}
+
+		public void setOccupierID(int occupierID) {
+			this.occupierID = occupierID;
+		}
+
+		public void updateTerritory(int numUnits, int occupierID) {
+			setNumUnits(numUnits);
+			setOccupierID(occupierID);
+		}
+
+		// * Goes against my very being, but it's probably
+		public int getNumUnits() {
+			return numUnits;
+		}
+
+		public int getOccupierID() {
+			return occupierID;
+		}
+	}
+
 	private BoardAPI board;
 	private PlayerAPI player;
-	
+	private final Country[] map;
+
 	BeachArcade(BoardAPI inBoard, PlayerAPI inPlayer) {
 		board = inBoard;	
 		player = inPlayer;
+		map = new Country[GameData.NUM_COUNTRIES];
+		updateTerritories();
 		// put your code here
 		return;
+	}
+
+	// ! The idea is that we would call this whenever we need to make decisions that concern the whole map.
+	private void updateTerritories() {
+		for (int i = 0; i < GameData.NUM_COUNTRIES; ++i) {
+			map[i].updateTerritory(board.getNumUnits(i), board.getOccupier(i));
+		}
 	}
 
 	/**
@@ -93,7 +135,7 @@ public class BeachArcade implements Bot {
 
 	/**
 	 * <p><strong>getMoveIn</strong> — For sending troops after winning battle.</p>
-	 * <p>Used when you have won a battle and claimed a territory. Must be between 1 and the number of units on the attacking territory less one.</p>
+	 * <p>Used when you have won a battle and claimed a territory. Sends a number of troops to the newly conquered territory, leaving both territories with at least one troop. </p>
 	 * @param attackCountryId int, ID of your attacking territory
 	 * @return String, number of units
 	 */
