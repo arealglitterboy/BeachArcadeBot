@@ -1,5 +1,7 @@
 // put your code here
 
+import java.util.PriorityQueue;
+
 public class BeachArcade implements Bot {
 	// The public API of BeachArcade must not change
 	// You cannot change any other classes
@@ -7,13 +9,17 @@ public class BeachArcade implements Bot {
 	// It may only inspect the state of the board and the player objects
 	// So you can use player.getNumUnits() but you can't use player.addUnits(10000), for example
 
-	private static class Country {
+	// > It might be helpful to store these instance variables in linked lists so we can see how they've changed, maybe with an int flag for if the change happened last go
+	// > This would be easy to implement, since we call update Territory on each entry in the list with each turn, so
+	private static class Territory {
 		public int occupierID;
 		public int numUnits;
+		public int id;
 
-		public Country() {
+		public Territory(int id) {
 			occupierID = -1;
 			numUnits = -1;
+			this.id = id;
 		}
 
 		public void setNumUnits(int numUnits) {
@@ -29,34 +35,68 @@ public class BeachArcade implements Bot {
 			setOccupierID(occupierID);
 		}
 
-		// * Goes against my very being, but it's probably
-		public int getNumUnits() {
-			return numUnits;
+		public boolean belongsTo(int playerID) {
+			return occupierID == playerID;
 		}
 
-		public int getOccupierID() {
-			return occupierID;
+		@Override
+		public String toString() {
+			return GameData.COUNTRY_NAMES[id] + " (Occupier: " + occupierID + ", number of troops: " + numUnits + ")" ;
+		}
+	}
+
+	private static class Decision implements Comparable<Decision> {
+		String command;
+		int weight;
+
+		public Decision(int weight, String command) {
+			this.command = command;
+			this.weight = weight;
+		}
+
+		public int getWeight() {
+			return weight;
+		}
+
+		public String getCommand() {
+			return command;
+		}
+
+		@Override
+		public int compareTo(Decision that) {
+			return this.weight - that.weight;
 		}
 	}
 
 	private BoardAPI board;
 	private PlayerAPI player;
-	private final Country[] map;
+	private final int opposition;
+	private final Territory[] territories;
+	private PriorityQueue<Decision> decisions;
 
 	BeachArcade(BoardAPI inBoard, PlayerAPI inPlayer) {
 		board = inBoard;	
 		player = inPlayer;
-		map = new Country[GameData.NUM_COUNTRIES];
-		updateTerritories();
+		territories = new Territory[GameData.NUM_COUNTRIES];
+
+		// ? Do we know if the other player's ID is always the same?
+		opposition = player.getId() + 1 % 2;
+
+		for (int i = 0; i < GameData.NUM_COUNTRIES; ++i) {
+			territories[i] = new Territory(i);
+		}
+		decisions = new PriorityQueue<Decision>();
+		prepareTurn();
 		// put your code here
 		return;
 	}
 
 	// ! The idea is that we would call this whenever we need to make decisions that concern the whole map.
-	private void updateTerritories() {
+	private void prepareTurn() {
 		for (int i = 0; i < GameData.NUM_COUNTRIES; ++i) {
-			map[i].updateTerritory(board.getNumUnits(i), board.getOccupier(i));
+			territories[i].updateTerritory(board.getNumUnits(i), board.getOccupier(i));
 		}
+		decisions.clear();
 	}
 
 	/**
@@ -70,9 +110,9 @@ public class BeachArcade implements Bot {
 	/**
 	 * <p><strong>getReinforcement</strong> — For <em>reinforcing</em> a territory with reserves.</p>
 	 * <p>Gets the name of a territory (that belongs to the bot) to place a number of reinforcements (that is valid) onto.</p>
-	 * @return String, command in the form "Country Name" "Number of Reinforcements".
+	 * @return String, command in the form "Territory Name" "Number of Reinforcements".
 	 */
-	public String getReinforcement () {
+	public String getReinforcement () { // * Strategise phase
 		String command = "";
 		// put your code here
 		command = GameData.COUNTRY_NAMES[(int)(Math.random() * GameData.NUM_COUNTRIES)];
@@ -88,12 +128,21 @@ public class BeachArcade implements Bot {
 	 * @return String, the name of the territory
 	 */
 	public String getPlacement (int forPlayer) {
-		String command = "";
-		// put your code here
-		// > For now, maybe just pick them at random?
-		command = GameData.COUNTRY_NAMES[(int)(Math.random() * GameData.NUM_COUNTRIES)];
-		command = command.replaceAll("\\s", "");
-		return(command);
+		prepareTurn(); // * Get snapshot of board and clear the decisions queue.
+
+		for (Territory territory : territories) { // * Go through each of the territories on the board.
+			if (territory.belongsTo(forPlayer)) { // # If the current territory belongs to 'forPlayer'.
+				int weight = 0;
+				int[] adjacents = GameData.ADJACENT[territory.id];
+				for (int adj : adjacents) { // * Calculate a weighting for this potential placement based on the number of your enemies territories in the vicinity.
+					weight += territories[adj].belongsTo(opposition) ? 2 * territories[adj].numUnits : -5; // ? I don't know how to weight this
+				}
+				System.out.println("Decision: " + territory + ", Weight: " + weight);
+				decisions.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id])); // * Add the calculated decision to the priority queue.
+			}
+		}
+
+		return ((decisions.isEmpty()) ? (getRandomName()) : (decisions.poll().command)); // * If an error occurred, return a random name, otherwise, return the most highly weighted decision.
 	}
 
 	/**
@@ -129,7 +178,7 @@ public class BeachArcade implements Bot {
 	public String getDefence (int countryId) {
 		String command = "";
 		// put your code here
-		command = "1";
+		command = "2";
 		return(command);
 	}
 
@@ -158,4 +207,8 @@ public class BeachArcade implements Bot {
 		return(command);
 	}
 
+	/* Utility Methods */
+	public static String getRandomName() {
+		return GameData.COUNTRY_NAMES[(int)(Math.random() * GameData.NUM_COUNTRIES)].replaceAll("\\s", "");
+	}
 }
