@@ -47,6 +47,7 @@ public class BeachArcade implements Bot {
 
 	private static class Decision implements Comparable<Decision> {
 		String command;
+		Territory basis;
 		int weight;
 
 		public Decision(int weight, String command) {
@@ -54,12 +55,22 @@ public class BeachArcade implements Bot {
 			this.weight = weight;
 		}
 
+		public Decision(int weight, String command, Territory basis) {
+			this(weight, command);
+			this.basis = basis;
+		}
+
+		public Decision(int weight, Territory basis) {
+			this.weight = weight;
+			this.basis = basis;
+		}
+
 		public int getWeight() {
 			return weight;
 		}
 
 		public String getCommand() {
-			return command;
+			return (command == null) ? "N_A" : command;
 		}
 
 		@Override
@@ -138,9 +149,10 @@ public class BeachArcade implements Bot {
 					weight += territories[adj].belongsTo(opposition) ? 2 * territories[adj].numUnits : -5; // ? I don't know how to weight this
 				}
 				System.out.println("Decision: " + territory + ", Weight: " + weight);
-				decisions.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id])); // * Add the calculated decision to the priority queue.
+				decisions.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id], territory)); // * Add the calculated decision to the priority queue.
 			}
 		}
+		System.out.println();
 
 		return ((decisions.isEmpty()) ? (getRandomName()) : (decisions.poll().command)); // * If an error occurred, return a random name, otherwise, return the most highly weighted decision.
 	}
@@ -156,6 +168,7 @@ public class BeachArcade implements Bot {
 		command = "skip";
 		return(command);
 	}
+	// * Weighting should, happen at the start of the game. Bot should make a plan, updates the weight after each time a thing is used.
 
 	/**
 	 * <p><strong>getBattle</strong> — For getting an attack command.</p>
@@ -168,6 +181,8 @@ public class BeachArcade implements Bot {
 		command = "skip";
 		return(command);
 	}
+	// ? weight both the territories that belong to us and those that don't. For ones that belong to us, we find the strategic value of launching from there, eg. 20 troops vs. 1 troop
+	// ? Simultaneously
 
 	/**
 	 * <p><strong>getDefence</strong> — For getting a defend command.</p>
