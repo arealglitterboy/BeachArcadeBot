@@ -1,5 +1,6 @@
 // put your code here
 
+import java.util.ArrayList;
 import java.util.PriorityQueue;
 
 public class BeachArcade implements Bot {
@@ -104,7 +105,14 @@ public class BeachArcade implements Bot {
 	 * @return String, Bot's name
 	 */
 	public String getName () {
-		return("Beach Arcade"); // ? What about throwing debug info in here, so whenever the bot's name is used, we get debug stuff
+		return("Name: Beach Arcade"); // ? What about throwing debug info in here, so whenever the bot's name is used, we get debug stuff
+		/*
+		*debug will include:
+		*	how many countries in total the bot controls/percentage of the board controlled
+		*	how many connecting countries the bot controls
+		*	how many cards are in the bot's hand/whether or not the bot can turn in its cards(to see if it is intentionally not turning them in)
+		* 	how many whole continents the bot owns
+		 */
 	}
 
 	/**
@@ -150,12 +158,47 @@ public class BeachArcade implements Bot {
 	 * <p>Returns a valid card exchange command; 3 cards to exchange (just first letter, ie. wia), or "<em>skip</em>" if less than 5 cards.</p>
 	 * @return String, command using letters to represent the cards
 	 */
-	public String getCardExchange () {
+	public String getCardExchange () { //not complete but a start
 		String command = "";
 		// put your code here
-		command = "skip";
-		return(command);
-	}
+		//for now we should just make it so that if the bot has combination of cards, it turns them in immediately
+		prepareTurn();
+		int m = 0;
+		int[] set = new int[Deck.SET_SIZE];
+		int[] validSets = new int[10];
+		for (int i=0; (i<Deck.NUM_SETS) ; i++) { //finds all possible plays for exchanging cards and puts them into an array
+			System.arraycopy(Deck.SETS[i], 0, set, 0, Deck.SET_SIZE);
+			if (player.isCardsAvailable(set)) {
+				validSets[m] = set[i];
+				m++;
+			}
+		}
+
+		int totalUnits = 0;
+
+		for (Territory territory : territories)
+			totalUnits += territory.numUnits;
+		if(totalUnits >= 100)//somehow if we can make it so that the bot only starts when the golden cavalry is at a certain point this would be optimal
+			command = "skip";
+		else{
+			for (int i = 0; (i < Deck.NUM_SETS); i++) {
+				int weight = 0;
+				if(validSets[i] == 0 || validSets[i] == 1 || validSets[i] == 2)//currently does not work, need to split the 3 digit number into 3 distinct digits and analyze each one
+					weight += 1;
+				else
+					weight += .5;
+				//match cards in bot's hand with all possible combinations
+				//decisions.add(new Decision(weight, ));
+				}
+			}
+			//we can then begin to weight them all based on c,a,& i being 1 & w weighted at .5
+			//If wild cards are the most important, it can be said that they should be used sparingly -> weighted less
+
+
+			//later it might be possible to strategise what hands are optimal, and if you have 2 different ways to turn in cards, find the best one
+			return (command);
+		}
+
 
 	/**
 	 * <p><strong>getBattle</strong> — For getting an attack command.</p>
