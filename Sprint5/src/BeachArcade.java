@@ -1,5 +1,7 @@
 // put your code here
 
+import com.sun.xml.internal.bind.v2.TODO;
+
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 
@@ -10,12 +12,13 @@ public class BeachArcade implements Bot {
     // It may only inspect the state of the board and the player objects
     // So you can use player.getNumUnits() but you can't use player.addUnits(10000), for example
 
-    // > It might be helpful to store these instance variables in linked lists so we can see how they've changed, maybe with an int flag for if the change happened last go
-    // > This would be easy to implement, since we call update Territory on each entry in the list with each turn, so
-    private static class Territory {
-        public int occupierID;
-        public int numUnits;
-        public int id;
+	// > It might be helpful to store these instance variables in linked lists so we can see how they've changed, maybe with an int flag for if the change happened last go
+	// > This would be easy to implement, since we call update Territory on each entry in the list with each turn, so
+
+	private static class Territory {
+		public int occupierID;
+		public int numUnits;
+		public int id;
 
         public Territory(int id) {
             occupierID = -1;
@@ -40,15 +43,15 @@ public class BeachArcade implements Bot {
             return occupierID == playerID;
         }
 
-        @Override
-        public String toString() {
-            return GameData.COUNTRY_NAMES[id] + " (Occupier: " + occupierID + ", number of troops: " + numUnits + ")";
-        }
-    }
+		@Override
+		public String toString() {
+			return GameData.COUNTRY_NAMES[id] + " (Occupier: " + occupierID + ", number of troops: " + numUnits + ")" ;
+		}
+	}
 
-    private static class Decision implements Comparable<Decision> {
-        String command;
-        int weight;
+	private static class Decision implements Comparable<Decision> {
+		String command;
+		int weight;
 
         public Decision(int weight, String command) {
             this.command = command;
@@ -269,32 +272,22 @@ public class BeachArcade implements Bot {
         return (command);
     }
 
-    /**
-     * <p><strong>getFortify</strong> — For selecting territories and a number of troops to exchange.</p>
-     * <p>Return country name to move units from, country name to fortify and number of units to move, or "skip" to skip this stage.</p>
-     *
-     * @return String representing fortify command ("from", "to", "units")
-     */
-    public String getFortify() {//make method that would return an array of territories in a continent
-//        //iterable (for each) continent
-//        //make an int array of int arrays, the first array is europe, the second array is whatever, you can do "for each int array in this thing
-//        String command = "";
-//        // put code here
-//
-//        command = "skip";
-//        return (command);
+	/**
+	 * <p><strong>getFortify</strong> — For selecting territories and a number of troops to exchange.</p>
+	 * <p>Return country name to move units from, country name to fortify and number of units to move, or "skip" to skip this stage.</p>
+	 * @return String representing fortify command ("from", "to", "units")
+	 */
+	public String getFortify () {
+		String command = "";
+		// put code here
+		command = "skip";
+		return(command);
+	}
 
-    }
-
-    /* Utility Methods */
-    public static String getRandomName() {
-        return GameData.COUNTRY_NAMES[(int) (Math.random() * GameData.NUM_COUNTRIES)].replaceAll("\\s", "");
-    }
-
-    public static String getErrorNullExchange() {
-        return "An Error has occurred in exchanging cards";
-    }
-
+	/* Utility Methods */
+	public static String getRandomName() {
+		return GameData.COUNTRY_NAMES[(int)(Math.random() * GameData.NUM_COUNTRIES)].replaceAll("\\s", "");
+	}
 	//TODO Change array to whatever decisions are held in
 	//TODO Make loop only work for owned territories
 	//TODO Make sure command argument is correct
