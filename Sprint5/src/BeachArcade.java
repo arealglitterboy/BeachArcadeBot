@@ -332,7 +332,7 @@ public class BeachArcade implements Bot {
 				weight += 20;
 				//Adds extra for the more troops an adjacent enemy territory has
 				weight += board.getNumUnits(i) - board.getNumUnits(ID);
-				isSurrounded =false;
+				isSurrounded = false;
 			}
 		}
 		//When the territory is in the middle of other territories that are owned by the player
