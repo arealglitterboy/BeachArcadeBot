@@ -106,7 +106,7 @@ public class BeachArcade implements Bot {
      * @return String, Bot's name
      */
     public String getName() {
-        return ("Name: Beach Arcade"); // ? What about throwing debug info in here, so whenever the bot's name is used, we get debug stuff
+        return ("SPF 75"); // ? What about throwing debug info in here, so whenever the bot's name is used, we get debug stuff
         /*
          *debug will include:
          *	how many countries in total the bot partialSetMatchs/percentage of the board partialSetMatchled
@@ -183,7 +183,7 @@ public class BeachArcade implements Bot {
                         partialSetMatch = true;
                     }
                 }
-                if (count == 3) {
+                if (count == Deck.SET_SIZE) {
                     System.arraycopy(set, 0, validSets[r], 0, set.length);
                     r++;
                     count = 0;
@@ -246,10 +246,12 @@ public class BeachArcade implements Bot {
      * @param countryId int, ID of territory to defend.
      * @return String, number of units
      */
-    public String getDefence(int countryId) {
+    public String getDefence(int countryId) {// Always defend with the most units you can to give the best chance of winning
         String command = "";
-        // put your code here
-        command = "2";
+        if (board.getNumUnits(countryId) >= 2)
+            command += 2;
+        else
+            command += 1;
         return (command);
     }
 
@@ -274,13 +276,14 @@ public class BeachArcade implements Bot {
      * @return String representing fortify command ("from", "to", "units")
      */
     public String getFortify() {//make method that would return an array of territories in a continent
-        //iterable (for each) continent
-        //make an int array of int arrays, the first array is europe, the second array is whatever, you can do "for each int array in this thing
-        String command = "";
-        // put code here
+//        //iterable (for each) continent
+//        //make an int array of int arrays, the first array is europe, the second array is whatever, you can do "for each int array in this thing
+//        String command = "";
+//        // put code here
+//
+//        command = "skip";
+//        return (command);
 
-        command = "skip";
-        return (command);
     }
 
     /* Utility Methods */
