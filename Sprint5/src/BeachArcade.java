@@ -1,5 +1,6 @@
 /* BeachArcade bot: Ethan Chan, Blake Whittington, Ben Brown */
 
+import java.time.temporal.Temporal;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -66,8 +67,77 @@ public class BeachArcade implements Bot {
 	 * @return String, the name of the territory
 	 */
 	public String getPlacement(int forPlayer) {
-		System.out.println("RE-IMPLEMENT THIS");
-		return getRandomName();
+		//! ratio will be defined as .66 for now
+		double ratio = .66;
+		Continent continent; //Will be initialized as the highest or lowest priority for bot or neutral repectively
+		int ratioCase; //Cases: // 1.) Over // 2.) Under // 3.) 100%
+		if(forPlayer == map.getBotID()){ //Case for the bot
+			continent = map.getContinent(0);
+		} else { //Case for the neutral player
+			continent = map.getContinent(5);
+		}
+
+		ratioCase = (map.getRatio(continent.id) == 1? 3 : (map.getRatio(continent.id) > ratio? 1 : 2)); //sets the case to over under or 100%
+		return distributeEvenly(continent, forPlayer).toString();
+
+	}
+	Territory distributeEvenly(Continent continent, int playerID){
+		Territory terr = null; //will be territory with the lowest troops
+		for(int i = 0; i < continent.totalTerritories; i++){
+			if(continent.getTerritory(i).occupierID == playerID){
+				if(terr != null) {
+					if (continent.getTerritory(i).numUnits > terr.numUnits) {
+						terr = continent.getTerritory(i);
+					}
+				}
+				else{
+					terr = continent.getTerritory(i);
+				}
+			}
+		}
+		return terr;
+	}
+
+	/**
+	 * Method to find the territory best suited for the ratio of the highest priority continent
+	 * @param continent: the highest priority continent
+	 * @param ratioCase: the number corresponding to the
+	 * @param playerID
+	 * @return the territory ID of the highest rated territory.9
+	 */
+	private int rate(Continent continent, int ratioCase, int playerID){
+		//Gets an array of all the owned territories to make things faster
+		int numOwnedTerritories = 0;
+		Territory compareTo;
+		Territory[] ownedTerritories = new Territory[continent.getTerritories().length];
+		int[] weights = new int[ownedTerritories.length];
+
+		for (int i = 0; i < continent.getTerritories().length; i++) {
+			if(continent.getTerritories()[i].belongsTo(playerID)){
+				ownedTerritories[numOwnedTerritories++] = continent.getTerritory(i);
+			}
+		}
+		if(ratioCase == 1) {
+			for(int i = 0; i < ownedTerritories.length && ownedTerritories[i] != null; i++){
+				compareTo = ownedTerritories[i];
+				weights[i] = 0;
+				//check all adjacent territories
+				for(int j = 0; j < GameData.ADJACENT[compareTo.id].length; i++){
+					if(compareTo.id == GameData.ADJACENT[compareTo.id][j]) { //if its owned by the player
+						weights[i] += 1;
+					}
+					else{
+						weights[i] += 25;
+					}
+				}
+			}
+		} else if(ratioCase == 2){
+
+		} else{
+			//Maybe try to find entry into other continents??
+
+		}
+		return 0;
 	}
 
 	/* Utility Methods */
