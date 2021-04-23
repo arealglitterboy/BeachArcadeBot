@@ -1,9 +1,6 @@
 // put your code here
 
-import com.sun.xml.internal.bind.v2.TODO;
-
-import java.util.ArrayList;
-import java.util.PriorityQueue;
+import java.util.*;
 
 public class BeachArcade implements Bot {
     // The public API of BeachArcade must not change
@@ -11,9 +8,6 @@ public class BeachArcade implements Bot {
     // BeachArcade may not alter the state of the board or the player objects
     // It may only inspect the state of the board and the player objects
     // So you can use player.getNumUnits() but you can't use player.addUnits(10000), for example
-
-	// > It might be helpful to store these instance variables in linked lists so we can see how they've changed, maybe with an int flag for if the change happened last go
-	// > This would be easy to implement, since we call update Territory on each entry in the list with each turn, so
 
 	private static class Territory {
 		public int occupierID;
@@ -49,6 +43,56 @@ public class BeachArcade implements Bot {
 		}
 	}
 
+	private static class Continent implements Comparable<Continent> {
+		public static final int NUM = GameData.NUM_CONTINENTS;
+
+		public final int id;
+		private final TreeMap<Integer, Territory> continent;
+		private final double totalTerritories;
+		private int territoriesOwned;
+		private int timesUsedThisTurn; // * Might be useful to put a cap on the number of turns in a move, but still allow multiple moves on different territories.
+
+		public Continent(int continentID) {
+			id = continentID;
+			continent = new TreeMap<Integer, Territory>();
+			
+			totalTerritories = GameData.CONTINENT_COUNTRIES[continentID].length;
+			
+			for (int curr : GameData.CONTINENT_COUNTRIES[continentID]) {
+				continent.put(curr, new Territory(curr));
+			}
+		}
+
+		/**
+		 * <strong>ratio()</strong> - Finds the ratio of territories owned by the bot
+		 * @return <em>double</em>, ratio
+		 */
+		public double ratio() {
+			return territoriesOwned/totalTerritories;
+		}
+
+		public void updateTerritory(int territoryID, int numUnits, int occupierID) {
+			if (getTerritory(territoryID).occupierID == botID ^ occupierID == botID) { // # If the bot lost/gained this territory in the update
+				territoriesOwned += (occupierID == botID) ? +1 : -1;  // * If the new ID is the bot's, add 1, if it's not, remove 1
+			}
+			getTerritory(territoryID).updateTerritory(numUnits, occupierID);
+		}
+
+		public Territory getTerritory(int territoryID) {
+			return continent.get(territoryID);
+		}
+
+		public Territory[] getTerritories() {
+			return continent.values().toArray(new Territory[0]);
+		}
+
+		@Override
+		public int compareTo(Continent that) {
+			return (int) (this.ratio() - that.ratio())*100;
+		}
+	}
+
+	// ! Not sure about using this one anymore
 	private static class Decision implements Comparable<Decision> {
 		String command;
 		int weight;
@@ -58,30 +102,6 @@ public class BeachArcade implements Bot {
             this.weight = weight;
         }
 
-        public int getWeight() {
-            return weight;
-        }
-		public Decision(int weight, String command, Territory basis) {
-			this(weight, command);
-			this.basis = basis;
-		}
-
-		public Decision(int weight, Territory basis) {
-			this.weight = weight;
-			this.basis = basis;
-		}
-
-		public int getWeight() {
-			return weight;
-		}
-
-        public String getCommand() {
-            return command;
-        }
-		public String getCommand() {
-			return (command == null) ? "N_A" : command;
-		}
-
         @Override
         public int compareTo(Decision that) {
             return this.weight - that.weight;
@@ -90,33 +110,49 @@ public class BeachArcade implements Bot {
 
     private BoardAPI board;
     private PlayerAPI player;
-    private final int opposition;
-    private final Territory[] territories;
-    private PriorityQueue<Decision> decisions;
+    public static int botID;
+
+    private final ArrayList<Continent> continents;
+	private final Turn[] turns;
+	// * initialisation: place your troops inside the cluster, place neutrals away from you
+
+    // * 1. Select main territory (or territories)
+	// * 2. Place troops 3 at a time
+	// * 3. Battle from there, priority on inside continent
+	// * 4. Fortify walls
+
+	// ? When you take over the whole continent, build up walls, then try and take over next continent
+
+	// ? What about a constant value ATTACK_LIMIT, would be a value representing a ratio
 
     BeachArcade(BoardAPI inBoard, PlayerAPI inPlayer) {
         board = inBoard;
         player = inPlayer;
-        territories = new Territory[GameData.NUM_COUNTRIES];
+        botID = player.getId();
 
-        // ? Do we know if the other player's ID is always the same?
-        opposition = player.getId() + 1 % 2;
+		continents = new ArrayList<Continent>();
 
-        for (int i = 0; i < GameData.NUM_COUNTRIES; ++i) {
-            territories[i] = new Territory(i);
-        }
-        decisions = new PriorityQueue<Decision>();
+		for (int index = 0; index < Continent.NUM; ++index) {
+			continents.add(index, new Continent(index));
+		}
+
         prepareTurn();
-        // put your code here
-        return;
+
+		turns = new Turn[4];
+		turns[Reinforcement.index] = new Reinforcement();
+		turns[Battle.index] = new Battle();
+		turns[MoveIn.index] = new MoveIn();
+		turns[Fortify.index] = new Fortify();
     }
 
-    // ! The idea is that we would call this whenever we need to make decisions that concern the whole map.
     private void prepareTurn() {
-        for (int i = 0; i < GameData.NUM_COUNTRIES; ++i) {
-            territories[i].updateTerritory(board.getNumUnits(i), board.getOccupier(i));
-        }
-        decisions.clear();
+    	for (Continent continent : continents) {
+			for (int territory : GameData.CONTINENT_COUNTRIES[continent.id]) {
+				continent.updateTerritory(territory, board.getNumUnits(territory), board.getOccupier(territory));
+			}
+		}
+
+		Collections.sort(continents); // * Sort continents in priority order
     }
 
     /**
@@ -136,44 +172,54 @@ public class BeachArcade implements Bot {
          */
     }
 
+    private String getCommand(Turn turn) {
+    	prepareTurn();
+
+    	for (Continent continent : continents) {
+    		if (turn.canUse(continent)) {
+    			return turn.getCommand(continent);
+			}
+		}
+    	throw new IllegalStateException("No Command was found");
+	}
+
+	/**
+	 * <p><strong>getPlacement</strong> — For placing of territories in <em>initialisation stage</em>.</p>
+	 * <p>Chooses a territory from one of the neutrals to place reinforcements on sending it to the board reinforcement (from the neutral player's reserves) on the selected territory.</p>
+	 *
+	 * @param forPlayer The index of the player whose territories we are choosing from.
+	 * @return String, the name of the territory
+	 */
+	public String getPlacement(int forPlayer) {
+//        prepareTurn(); // * Get snapshot of board and clear the decisions queue.
+//
+//        for (Territory territory : territories_OLD_DONT_USE) { // * Go through each of the territories on the board.
+//            if (territory.belongsTo(forPlayer)) { // # If the current territory belongs to 'forPlayer'.
+//                int weight = 0;
+//                int[] adjacents = GameData.ADJACENT[territory.id];
+//
+//                for (int adj : adjacents) { // * Calculate a weighting for this potential placement based on the number of your enemies territories in the vicinity.
+//                    weight += territories_OLD_DONT_USE[adj].belongsTo(opposition) ? 2 * territories_OLD_DONT_USE[adj].numUnits : -5; // ? I don't know how to weight this
+//                }
+//
+//                System.out.println("Decision: " + territory + ", Weight: " + weight);
+//                decisions_OLD_DONT_USE.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id])); // * Add the calculated decision to the priority queue.
+//            }
+//        }
+//
+//        return ((decisions_OLD_DONT_USE.isEmpty()) ? (getRandomName()) : (decisions_OLD_DONT_USE.poll().command)); // * If an error occurred, return a random name, otherwise, return the most highly weighted decision.
+		System.out.println("RE-IMPLEMENT THIS");
+		return getRandomName();
+	}
+
     /**
      * <p><strong>getReinforcement</strong> — For <em>reinforcing</em> a territory with reserves.</p>
      * <p>Gets the name of a territory (that belongs to the bot) to place a number of reinforcements (that is valid) onto.</p>
      *
      * @return String, command in the form "Territory Name" "Number of Reinforcements".
      */
-    public String getReinforcement() { // * Strategise phase
-        String command = "";
-        // put your code here
-        command = GameData.COUNTRY_NAMES[(int) (Math.random() * GameData.NUM_COUNTRIES)];
-        command = command.replaceAll("\\s", "");
-        command += " 1";
-        return (command);
-    }
-
-    /**
-     * <p><strong>getPlacement</strong> — For placing of territories in <em>initialisation stage</em>.</p>
-     * <p>Chooses a territory from one of the neutrals to place reinforcements on sending it to the board reinforcement (from the neutral player's reserves) on the selected territory.</p>
-     *
-     * @param forPlayer The index of the player whose territories we are choosing from.
-     * @return String, the name of the territory
-     */
-    public String getPlacement(int forPlayer) {
-        prepareTurn(); // * Get snapshot of board and clear the decisions queue.
-
-        for (Territory territory : territories) { // * Go through each of the territories on the board.
-            if (territory.belongsTo(forPlayer)) { // # If the current territory belongs to 'forPlayer'.
-                int weight = 0;
-                int[] adjacents = GameData.ADJACENT[territory.id];
-                for (int adj : adjacents) { // * Calculate a weighting for this potential placement based on the number of your enemies territories in the vicinity.
-                    weight += territories[adj].belongsTo(opposition) ? 2 * territories[adj].numUnits : -5; // ? I don't know how to weight this
-                }
-                System.out.println("Decision: " + territory + ", Weight: " + weight);
-                decisions.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id])); // * Add the calculated decision to the priority queue.
-            }
-        }
-
-        return ((decisions.isEmpty()) ? (getRandomName()) : (decisions.poll().command)); // * If an error occurred, return a random name, otherwise, return the most highly weighted decision.
+    public String getReinforcement() {
+		return getCommand(Reinforcement.turn);
     }
 
     /**
@@ -182,11 +228,12 @@ public class BeachArcade implements Bot {
      *
      * @return String, command using letters to represent the cards
      */
-    public String getCardExchange() { //First Iteration Complete
+    public String getCardExchange() { // First Iteration Complete
         // Later it might be possible to strategise what hands are optimal, and if you have 2 different ways to turn in cards, find the best one
         int[][] validSets = new int[60][3];
         int[] set = new int[Deck.SET_SIZE];
         int r = 0;
+        PriorityQueue<Decision> decisions = new PriorityQueue<Decision>();
 
         for (int i = 0; (i < Deck.NUM_SETS); i++) {
             System.arraycopy(Deck.SETS[i], 0, set, 0, Deck.SET_SIZE);
@@ -227,7 +274,8 @@ public class BeachArcade implements Bot {
                         x.append("w");
                         break;
                     default:
-                        x.append("Error you messed up");
+                    	System.out.println("Error you messed up");
+//                        x.append("Error you messed up");
                 }
             }
             int weight = 0;
@@ -241,7 +289,11 @@ public class BeachArcade implements Bot {
             String possibleDecision = x.toString();
             decisions.add(new Decision(weight, possibleDecision));
         }
-        return ((decisions.isEmpty()) ? (getErrorNullExchange()) : (decisions.poll().command));
+        if (decisions.isEmpty()) {
+        	throw new IllegalStateException("No valid set of cards");
+		}
+//        return ((decisions.isEmpty()) ? (getErrorNullExchange()) : (decisions.poll().command));
+		return decisions.poll().command;
     }
 
 
@@ -252,10 +304,7 @@ public class BeachArcade implements Bot {
      * @return String representing attack command ("from", "to", "units")
      */
     public String getBattle() {
-        String command = "";
-        // put your code here
-        command = "skip";
-        return (command);
+    	return getCommand(Battle.turn);
     }
 
     /**
@@ -265,7 +314,7 @@ public class BeachArcade implements Bot {
      * @param countryId int, ID of territory to defend.
      * @return String, number of units
      */
-    public String getDefence(int countryId) {// Always defend with the most units you can to give the best chance of winning
+    public String getDefence(int countryId) { // Always defend with the most units you can to give the best chance of winning
         String command = "";
         if (board.getNumUnits(countryId) >= 2)
             command += 2;
@@ -282,10 +331,7 @@ public class BeachArcade implements Bot {
      * @return String, number of units
      */
     public String getMoveIn(int attackCountryId) {
-        String command = "";
-        // put your code here
-        command = "0";
-        return (command);
+        return getCommand(MoveIn.turn);
     }
 
 	/**
@@ -294,10 +340,7 @@ public class BeachArcade implements Bot {
 	 * @return String representing fortify command ("from", "to", "units")
 	 */
 	public String getFortify () {
-		String command = "";
-		// put code here
-		command = "skip";
-		return(command);
+		return getCommand(Fortify.turn);
 	}
 
 	/* Utility Methods */
@@ -312,7 +355,7 @@ public class BeachArcade implements Bot {
 
 	/**
 	 * Finds all the possible decisions that the player can make
-	 * @return: the decisions?
+	 * @return the decisions?
 	 */
 	public int findDecisions(){
 		Decision[] decisionsArr = new Decision[42];
@@ -358,4 +401,78 @@ public class BeachArcade implements Bot {
 		return weight;
 	}
 
+	/* * Nested Turn * */
+	private static abstract class Turn {
+		protected double ratio;
+
+		// * Based on the ratio of the continent, get a command
+		public abstract String getCommand(Continent continent);
+
+		public boolean canUse(Continent continent) {
+			return true;
+		}
+	}
+	private static class Reinforcement extends Turn {
+		public static final Turn turn = new Reinforcement();
+		public static final int index = 0;
+
+		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
+		@Override
+		public String getCommand(Continent continent) {
+			return null;
+		}
+
+		@Override
+		public boolean canUse(Continent continent) {
+			// > Would return whether this continent has reached our "safe" condition
+			// ! The "safe" condition should be based on the port of entry territories having a certain amount of troops in proportion to its bordering territory (if an enemy)
+			// ! By only doing this if its an enemy (and moving our priority to the bordering friendly territory), we prevent a soft lock state where we've almost won the game, but are fortifying unnecessarily.
+			// ! I won't lie, this is a bad explanation, but we can talk about it more later
+			return true;
+		}
+	}
+
+	private static class Battle extends Turn {
+		public static final Turn turn = new Battle();
+		public static final int index = 1;
+
+		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
+		@Override
+		public String getCommand(Continent continent) {
+			return null;
+		}
+
+		@Override
+		public boolean canUse(Continent continent) {
+			// ?
+			return false;
+		}
+	}
+
+	private static class MoveIn extends Turn {
+		public static final Turn turn = new MoveIn();
+		public static final int index = 2;
+
+		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
+		@Override
+		public String getCommand(Continent continent) {
+			return null;
+		}
+	}
+
+	private static class Fortify extends Turn {
+		public static final Turn turn = new Fortify();
+		public static final int index = 3;
+
+		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
+		@Override
+		public String getCommand(Continent continent) {
+			return null;
+		}
+
+		@Override
+		public boolean canUse(Continent continent) {
+			return false;
+		}
+	}
 }
