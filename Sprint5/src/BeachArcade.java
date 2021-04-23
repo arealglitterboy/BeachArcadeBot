@@ -186,8 +186,9 @@ public class BeachArcade implements Bot {
 
     private final GameMap map;
 
-    protected static int selectedTerritory; // * Holds the ID of the target of an attack
-
+	protected static int selectedTerritory; // * Holds the ID of the target of an attack
+	private final ArrayList<Continent> continents;
+	private final Turn[] turns;
 	// * initialisation: place your troops inside the cluster, place neutrals away from you
 
     // * 1. Select main territory (or territories)
@@ -241,6 +242,11 @@ public class BeachArcade implements Bot {
 	public String getPlacement(int forPlayer) {
 		System.out.println("RE-IMPLEMENT THIS");
 		return getRandomName();
+	}
+
+	/* Utility Methods */
+	public static String getRandomName() {
+		return GameData.COUNTRY_NAMES[(int) (Math.random() * GameData.NUM_COUNTRIES)].replaceAll("\\s", "");
 	}
 
     /**
@@ -306,7 +312,6 @@ public class BeachArcade implements Bot {
                         break;
                     default:
                     	System.out.println("Error you messed up");
-//                        x.append("Error you messed up");
                 }
             }
             int weight = 0;
@@ -323,10 +328,21 @@ public class BeachArcade implements Bot {
         if (decisions.isEmpty()) {
         	throw new IllegalStateException("No valid set of cards");
 		}
-//        return ((decisions.isEmpty()) ? (getErrorNullExchange()) : (decisions.poll().command));
 		return decisions.poll().command;
     }
 
+    private static class Decision implements Comparable<Decision> {
+        String command;
+        int weight;
+        public Decision(int weight, String command) {
+            this.command = command;
+            this.weight = weight;
+        }
+        @Override
+        public int compareTo(Decision that) {
+            return this.weight - that.weight;
+        }
+    }
 
     /**
      * <p><strong>getBattle</strong> — For getting an attack command.</p>
@@ -377,63 +393,6 @@ public class BeachArcade implements Bot {
 		return getCommand(Fortify.turn);
 	}
 
-	/* Utility Methods */
-	public static String getRandomName() {
-		return GameData.COUNTRY_NAMES[(int)(Math.random() * GameData.NUM_COUNTRIES)].replaceAll("\\s", "");
-	}
-	//TODO Change array to whatever decisions are held in
-	//TODO Make loop only work for owned territories
-	//TODO Make sure command argument is correct
-	//TODO Change return statement to reflect the decisions or remove it if it can be added to a field
-	//TODO Make the decisions
-
-	/**
-	 * Finds all the possible decisions that the player can make
-	 * @return the decisions?
-	 */
-	public int findDecisions(){
-		Decision[] decisionsArr = new Decision[42];
-		int index = 0;
-		//Finds the owned territories and weights them
-		for(int i = 0; i < 42; i++){
-			if(board.getOccupier(i) == player.getId()){
-				decisionsArr[index] = new Decision(findWeight(i), "command");
-				index++;
-			}
-		}
-		return 0;
-	}
-
-	/** //TODO implement this so it works for attack and fortify as well
-	 * Finds the weight of a given territory in terms of if they should place troops or not
-	 * If territory is surrounded by friendly territories it will be zero
-	 * The weight will be increased by 10 for each adjacent friendly territory
-	 * and at least 20 for each opponent territory
-	 * @param ID: the territory in question
-	 * @return weight: the weight of the decision. Higher weight means higher priority
-	 */
-	public int findWeight(int ID) {
-		int weight = 0;	//The weight of the decision
-		boolean isSurrounded = true; //when the territory is surrounded only by territories they own
-		//Go thru all the adjacents
-		for (int i : GameData.ADJACENT[ID]) {
-			//When the adjacent territory is owned by the player
-			if (board.getOccupier(i) == player.getId()) {
-				weight += 10;
-			//when the adjacent territory is not owned by the player
-			} else {
-				weight += 20;
-				//Adds extra for the more troops an adjacent enemy territory has
-				weight += board.getNumUnits(i) - board.getNumUnits(ID);
-				isSurrounded = false;
-			}
-		}
-		//When the territory is in the middle of other territories that are owned by the player
-		if(isSurrounded){
-			weight = 0; //There's no strategic value in adding troops to a place like this
-		}
-		return weight;
-	}
 
 	/* * Nested Turn * */
 	private static abstract class Turn {
@@ -521,5 +480,37 @@ public class BeachArcade implements Bot {
 		public boolean canUse(Continent continent) {
 			return false;
 		}
+	}
+	/**
+	 * <p> I Dont really know what to do with this so for now I stick it down here :) </p>
+	 * <p> //TODO implement this so it works for attack and fortify as well </p>
+	 * Finds the weight of a given territory in terms of if they should place troops or not
+	 * If territory is surrounded by friendly territories it will be zero
+	 * The weight will be increased by 10 for each adjacent friendly territory
+	 * and at least 20 for each opponent territory
+	 * @param ID: the territory in question
+	 * @return weight: the weight of the decision. Higher weight means higher priority
+	 */
+	public int findWeight(int ID) {
+		int weight = 0;	//The weight of the decision
+		boolean isSurrounded = true; //when the territory is surrounded only by territories they own
+		//Go thru all the adjacents
+		for (int i : GameData.ADJACENT[ID]) {
+			//When the adjacent territory is owned by the player
+			if (board.getOccupier(i) == player.getId()) {
+				weight += 10;
+				//when the adjacent territory is not owned by the player
+			} else {
+				weight += 20;
+				//Adds extra for the more troops an adjacent enemy territory has
+				weight += board.getNumUnits(i) - board.getNumUnits(ID);
+				isSurrounded = false;
+			}
+		}
+		//When the territory is in the middle of other territories that are owned by the player
+		if(isSurrounded){
+			weight = 0; //There's no strategic value in adding troops to a place like this
+		}
+		return weight;
 	}
 }
