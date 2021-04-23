@@ -62,26 +62,31 @@ public class BeachArcade implements Bot {
 	/**
 	 * <p><strong>getPlacement</strong> — For placing of territories in <em>initialisation stage</em>.</p>
 	 * <p>Chooses a territory from one of the neutrals to place reinforcements on sending it to the board reinforcement (from the neutral player's reserves) on the selected territory.</p>
-	 *
 	 * @param forPlayer The index of the player whose territories we are choosing from.
 	 * @return String, the name of the territory
 	 */
 	public String getPlacement(int forPlayer) {
 		//! ratio will be defined as .66 for now
 		double ratio = .66;
-		Continent continent; //Will be initialized as the highest or lowest priority for bot or neutral repectively
+		Continent continent; //Will be initialized as the highest or lowest priority for bot or neutral respectively
 		int ratioCase; //Cases: // 1.) Over // 2.) Under // 3.) 100%
 		if(forPlayer == map.getBotID()){ //Case for the bot
-			continent = map.getContinent(0);
+			continent = map.getContinent(0); //Set it to the highest priority territory
 		} else { //Case for the neutral player
-			continent = map.getContinent(5);
+			continent = map.getContinent(5); //Set it to the lowest priority territory
 		}
-
 		ratioCase = (map.getRatio(continent.id) == 1? 3 : (map.getRatio(continent.id) > ratio? 1 : 2)); //sets the case to over under or 100%
-		return distributeEvenly(continent, forPlayer).toString();
+		return findLowest(continent, forPlayer).toString();
 
 	}
-	Territory distributeEvenly(Continent continent, int playerID){
+	//* This is supposed to be used to evenly distribute troops among a continent
+	/**
+	 * Finds the territory on a continent with the lowest number of troops
+	 * @param continent: the given continent
+	 * @param playerID: the player's id
+	 * @return the territory with the lowest amount of troops
+	 */
+	Territory findLowest(Continent continent, int playerID){
 		Territory terr = null; //will be territory with the lowest troops
 		for(int i = 0; i < continent.totalTerritories; i++){
 			if(continent.getTerritory(i).occupierID == playerID){
@@ -97,13 +102,13 @@ public class BeachArcade implements Bot {
 		}
 		return terr;
 	}
-
+	//? We can probably take this out. But we may be able to use it for strategize
 	/**
 	 * Method to find the territory best suited for the ratio of the highest priority continent
 	 * @param continent: the highest priority continent
-	 * @param ratioCase: the number corresponding to the
-	 * @param playerID
-	 * @return the territory ID of the highest rated territory.9
+	 * @param ratioCase: the number corresponding to the ratio
+	 * @param playerID: the player's id
+	 * @return the territory ID of the highest rated territory
 	 */
 	private int rate(Continent continent, int ratioCase, int playerID){
 		//Gets an array of all the owned territories to make things faster
@@ -585,6 +590,8 @@ public class BeachArcade implements Bot {
 			return false;
 		}
 	}
+	//! I think this might be useful for strategize
+	//! but if we don't need it feel free to get rid of it
 	/**
 	 * <p> I Dont really know what to do with this so for now I stick it down here :) </p>
 	 * <p> //TODO implement this so it works for attack and fortify as well </p>
