@@ -1,66 +1,106 @@
-// put your code here
+/* BeachArcade bot: Ethan Chan, Blake Whittington, Ben Brown */
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class BeachArcade implements Bot {
-    // The public API of BeachArcade must not change
-    // You cannot change any other classes
-    // BeachArcade may not alter the state of the board or the player objects
-    // It may only inspect the state of the board and the player objects
-    // So you can use player.getNumUnits() but you can't use player.addUnits(10000), for example
+	private interface GameMap {
+		Territory getTerritory(int territory);
+		Continent getContinent(int continent);
+		Territory[] getTerritories(int continent);
+		double getRatio(int continent);
 
-	private static class Territory {
-		public int occupierID;
-		public int numUnits;
-		public int id;
+		boolean belongsTo(int territoryID, int playerID);
+		boolean belongsTo(int territoryID);
 
-        public Territory(int id) {
-            occupierID = -1;
-            numUnits = -1;
-            this.id = id;
-        }
+		void startTurn(BoardAPI board);
+		void updateTerritory(int territory, int numUnits, int occupierID);
+		Stream<Continent> stream();
+	}
 
-        public void setNumUnits(int numUnits) {
-            this.numUnits = numUnits;
-        }
+	private static class Map extends ArrayList<Continent> implements GameMap {
+		public final int botID;
+		public int selectedTerritory; // * Holds the currently targeted territory
 
-        public void setOccupierID(int occupierID) {
-            this.occupierID = occupierID;
-        }
+		public Map(int playerID) {
+			botID = playerID;
 
-        public void updateTerritory(int numUnits, int occupierID) {
-            setNumUnits(numUnits);
-            setOccupierID(occupierID);
-        }
-
-        public boolean belongsTo(int playerID) {
-            return occupierID == playerID;
-        }
+			for (int index = 0; index < GameData.NUM_CONTINENTS; ++index) {
+				add(index, new Continent(index, botID));
+			}
+		}
 
 		@Override
-		public String toString() {
-			return GameData.COUNTRY_NAMES[id] + " (Occupier: " + occupierID + ", number of troops: " + numUnits + ")" ;
+		public Territory getTerritory(int territory) {
+			return get(getContinentID(territory)).getTerritory(territory);
+		}
+
+		@Override
+		public Continent getContinent(int continent) {
+			return get(continent);
+		}
+
+		@Override
+		public Territory[] getTerritories(int continent) {
+			return get(continent).getTerritories();
+		}
+
+		@Override
+		public double getRatio(int continent) {
+			return get(continent).ratio();
+		}
+
+		@Override
+		public boolean belongsTo(int territoryID, int playerID) {
+			return getTerritory(territoryID).occupierID == playerID;
+		}
+
+		@Override
+		public boolean belongsTo(int territoryID) {
+			return belongsTo(territoryID, botID);
+		}
+
+		@Override
+		public void startTurn(BoardAPI board) {
+			forEach(continent -> continent.update(board)); // * Send the board to each continent to get its changes
+			sort(Continent::compareTo); // * Sort the array based on the priority level
+		}
+
+		@Override
+		public void updateTerritory(int territory, int numUnits, int occupierID) {
+			getTerritory(territory).updateTerritory(numUnits, occupierID);
+		}
+
+		@Override
+		public Stream<Continent> stream() {
+			return super.stream();
+		}
+
+		/* * Utility Methods * */
+		private int getContinentID(int territory) {
+			return GameData.CONTINENT_IDS[territory];
 		}
 	}
 
 	private static class Continent implements Comparable<Continent> {
-		public static final int NUM = GameData.NUM_CONTINENTS;
-
-		public final int id;
+		public final int id, botID;
 		private final TreeMap<Integer, Territory> continent;
 		private final double totalTerritories;
 		private int territoriesOwned;
 		private int timesUsedThisTurn; // * Might be useful to put a cap on the number of turns in a move, but still allow multiple moves on different territories.
 
-		public Continent(int continentID) {
+		public Continent(int continentID, int botID) {
 			id = continentID;
-			continent = new TreeMap<Integer, Territory>();
-			
+			this.botID = botID;
+			continent = new TreeMap<>();
+
 			totalTerritories = GameData.CONTINENT_COUNTRIES[continentID].length;
-			
+
 			for (int curr : GameData.CONTINENT_COUNTRIES[continentID]) {
 				continent.put(curr, new Territory(curr));
 			}
+
+			System.out.println(GameData.CONTINENT_NAMES[id] + " was created, " + totalTerritories + " total territories");
 		}
 
 		/**
@@ -78,6 +118,13 @@ public class BeachArcade implements Bot {
 			getTerritory(territoryID).updateTerritory(numUnits, occupierID);
 		}
 
+		public void update(BoardAPI board) {
+			timesUsedThisTurn = 0;
+			for (int territory : GameData.CONTINENT_COUNTRIES[id]) {
+				updateTerritory(territory, board.getNumUnits(territory), board.getOccupier(territory));
+			}
+		}
+
 		public Territory getTerritory(int territoryID) {
 			return continent.get(territoryID);
 		}
@@ -92,28 +139,55 @@ public class BeachArcade implements Bot {
 		}
 	}
 
+	private static class Territory {
+		public int occupierID;
+		public int numUnits;
+		public int id;
+
+		public Territory(int id) {
+			occupierID = -1;
+			numUnits = -1;
+			this.id = id;
+		}
+
+		public void updateTerritory(int numUnits, int occupierID) {
+			this.numUnits = numUnits;
+			this.occupierID = occupierID;
+		}
+
+		public boolean belongsTo(int playerID) {
+			return occupierID == playerID;
+		}
+
+		@Override
+		public String toString() {
+			return GameData.COUNTRY_NAMES[id] + " (Occupier: " + occupierID + ", number of troops: " + numUnits + ")" ;
+		}
+	}
+
 	// ! Not sure about using this one anymore
 	private static class Decision implements Comparable<Decision> {
 		String command;
 		int weight;
 
-        public Decision(int weight, String command) {
-            this.command = command;
-            this.weight = weight;
-        }
+		public Decision(int weight, String command) {
+			this.command = command;
+			this.weight = weight;
+		}
 
-        @Override
-        public int compareTo(Decision that) {
-            return this.weight - that.weight;
-        }
-    }
+		@Override
+		public int compareTo(Decision that) {
+			return this.weight - that.weight;
+		}
+	}
 
     private BoardAPI board;
-    private PlayerAPI player;
-    public static int botID;
+	private PlayerAPI player;
 
-    private final ArrayList<Continent> continents;
-	private final Turn[] turns;
+    private final GameMap map;
+
+    protected static int selectedTerritory; // * Holds the ID of the target of an attack
+
 	// * initialisation: place your troops inside the cluster, place neutrals away from you
 
     // * 1. Select main territory (or territories)
@@ -128,31 +202,10 @@ public class BeachArcade implements Bot {
     BeachArcade(BoardAPI inBoard, PlayerAPI inPlayer) {
         board = inBoard;
         player = inPlayer;
-        botID = player.getId();
 
-		continents = new ArrayList<Continent>();
+		map = new Map(player.getId());
 
-		for (int index = 0; index < Continent.NUM; ++index) {
-			continents.add(index, new Continent(index));
-		}
-
-        prepareTurn();
-
-		turns = new Turn[4];
-		turns[Reinforcement.index] = new Reinforcement();
-		turns[Battle.index] = new Battle();
-		turns[MoveIn.index] = new MoveIn();
-		turns[Fortify.index] = new Fortify();
-    }
-
-    private void prepareTurn() {
-    	for (Continent continent : continents) {
-			for (int territory : GameData.CONTINENT_COUNTRIES[continent.id]) {
-				continent.updateTerritory(territory, board.getNumUnits(territory), board.getOccupier(territory));
-			}
-		}
-
-		Collections.sort(continents); // * Sort continents in priority order
+        map.startTurn(board);
     }
 
     /**
@@ -173,14 +226,9 @@ public class BeachArcade implements Bot {
     }
 
     private String getCommand(Turn turn) {
-    	prepareTurn();
+    	map.startTurn(board);
 
-    	for (Continent continent : continents) {
-    		if (turn.canUse(continent)) {
-    			return turn.getCommand(continent);
-			}
-		}
-    	throw new IllegalStateException("No Command was found");
+    	return map.stream().filter(turn::canUse).findFirst().map(turn::getCommand).orElse("skip");
 	}
 
 	/**
@@ -191,23 +239,6 @@ public class BeachArcade implements Bot {
 	 * @return String, the name of the territory
 	 */
 	public String getPlacement(int forPlayer) {
-//        prepareTurn(); // * Get snapshot of board and clear the decisions queue.
-//
-//        for (Territory territory : territories_OLD_DONT_USE) { // * Go through each of the territories on the board.
-//            if (territory.belongsTo(forPlayer)) { // # If the current territory belongs to 'forPlayer'.
-//                int weight = 0;
-//                int[] adjacents = GameData.ADJACENT[territory.id];
-//
-//                for (int adj : adjacents) { // * Calculate a weighting for this potential placement based on the number of your enemies territories in the vicinity.
-//                    weight += territories_OLD_DONT_USE[adj].belongsTo(opposition) ? 2 * territories_OLD_DONT_USE[adj].numUnits : -5; // ? I don't know how to weight this
-//                }
-//
-//                System.out.println("Decision: " + territory + ", Weight: " + weight);
-//                decisions_OLD_DONT_USE.add(new Decision(weight, GameData.COUNTRY_NAMES[territory.id])); // * Add the calculated decision to the priority queue.
-//            }
-//        }
-//
-//        return ((decisions_OLD_DONT_USE.isEmpty()) ? (getRandomName()) : (decisions_OLD_DONT_USE.poll().command)); // * If an error occurred, return a random name, otherwise, return the most highly weighted decision.
 		System.out.println("RE-IMPLEMENT THIS");
 		return getRandomName();
 	}
@@ -233,7 +264,7 @@ public class BeachArcade implements Bot {
         int[][] validSets = new int[60][3];
         int[] set = new int[Deck.SET_SIZE];
         int r = 0;
-        PriorityQueue<Decision> decisions = new PriorityQueue<Decision>();
+        PriorityQueue<Decision> decisions = new PriorityQueue<>();
 
         for (int i = 0; (i < Deck.NUM_SETS); i++) {
             System.arraycopy(Deck.SETS[i], 0, set, 0, Deck.SET_SIZE);
@@ -331,7 +362,10 @@ public class BeachArcade implements Bot {
      * @return String, number of units
      */
     public String getMoveIn(int attackCountryId) {
-        return getCommand(MoveIn.turn);
+//        return getCommand(MoveIn.turn);
+		// > Logic surrounding the value in `selectedTerritory` and the value in attackCountryId
+		Territory attacking = map.getTerritory(attackCountryId);
+		return "";
     }
 
 	/**
@@ -411,10 +445,13 @@ public class BeachArcade implements Bot {
 		public boolean canUse(Continent continent) {
 			return true;
 		}
+
+		public String cancel() {
+			return "skip";
+		}
 	}
 	private static class Reinforcement extends Turn {
 		public static final Turn turn = new Reinforcement();
-		public static final int index = 0;
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
@@ -430,15 +467,22 @@ public class BeachArcade implements Bot {
 			// ! I won't lie, this is a bad explanation, but we can talk about it more later
 			return true;
 		}
+
+		@Override
+		public String cancel() {
+			throw new IllegalStateException("You can't skip reinforcement stage, an error has occurred");
+		}
 	}
 
 	private static class Battle extends Turn {
 		public static final Turn turn = new Battle();
-		public static final int index = 1;
+		public int attackingTerritory;
+		public int defendingTerritory;
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
 		public String getCommand(Continent continent) {
+
 			return null;
 		}
 
@@ -449,20 +493,23 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class MoveIn extends Turn {
-		public static final Turn turn = new MoveIn();
-		public static final int index = 2;
-
-		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
-		@Override
-		public String getCommand(Continent continent) {
-			return null;
-		}
-	}
+//	private static class MoveIn extends Turn {
+//		public static final Turn turn = new MoveIn();
+//
+//		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
+//		@Override
+//		public String getCommand(Continent continent) {
+//			return null;
+//		}
+//
+//		@Override
+//		public boolean canUse(Continent continent) {
+//			return continent.contains();
+//		}
+//	}
 
 	private static class Fortify extends Turn {
 		public static final Turn turn = new Fortify();
-		public static final int index = 3;
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
