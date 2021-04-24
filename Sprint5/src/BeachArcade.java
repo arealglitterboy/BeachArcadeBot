@@ -304,14 +304,17 @@ public class BeachArcade implements Bot {
 	}
 
 	private static class Map extends ArrayList<Continent> implements GameMap {
+		private final int[] indexes; // * Holds the indexes of the continents in the arraylist based on their ID
 		public final int botID;
 		public int attacking, defending; // * Holds the currently targeted territory
 
 		public Map(int playerID) {
 			botID = playerID;
+			indexes = new int[GameData.NUM_CONTINENTS];
 
 			for (int index = 0; index < GameData.NUM_CONTINENTS; ++index) {
 				add(index, new Continent(index, botID));
+				indexes[index] = index;
 			}
 		}
 
@@ -322,25 +325,17 @@ public class BeachArcade implements Bot {
 
 		@Override
 		public Territory getTerritory(int territory) {
-			int territoryContinent = getContinentID(territory);
-
-			for (Continent continent : this) {
-				if (continent.id == territoryContinent) {
-					return continent.getTerritory(territory);
-				}
-			}
-
-			throw new IllegalStateException("Invalid territory index passed to map, " + territory);
+			return getContinent(getContinentID(territory)).getTerritory(territory);
 		}
 
 		@Override
 		public Continent getContinent(int continent) {
-			return get(continent);
+			return get(indexes[getContinentID(continent)]);
 		}
 
 		@Override
 		public Territory[] getTerritories(int continent) {
-			return get(continent).getTerritories();
+			return getContinent(continent).getTerritories();
 		}
 
 		@Override
@@ -357,7 +352,7 @@ public class BeachArcade implements Bot {
 
 		@Override
 		public double getRatio(int continent) {
-			return get(continent).ratio();
+			return getContinent(continent).ratio();
 		}
 
 		@Override
@@ -394,6 +389,10 @@ public class BeachArcade implements Bot {
 		public void startTurn(BoardAPI board) {
 			forEach(continent -> continent.update(board)); // * Send the board to each continent to get its changes
 			sort(Continent::compareTo); // * Sort the array list based on the priority level
+
+			for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
+				indexes[get(i).id] = i; // * Update the indexes of the continents in the arraylist
+			}
 		}
 
 		@Override
