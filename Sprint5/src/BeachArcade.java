@@ -492,6 +492,7 @@ public class BeachArcade implements Bot {
 	private static class Territory {
 		public final int id;
 		public final String name;
+
 		public int occupierID;
 		public int numUnits;
 
@@ -511,6 +512,10 @@ public class BeachArcade implements Bot {
 
 		public boolean belongsTo(int playerID) {
 			return occupierID == playerID;
+		}
+
+		public String getName() {
+			return name;
 		}
 
 		@Override
