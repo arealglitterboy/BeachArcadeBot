@@ -53,9 +53,13 @@ public class BeachArcade implements Bot {
 
     	for (Continent continent : map) {
     		if (turn.canUse(continent)) {
-    			return turn.getCommand(continent);
+    			System.out.println(continent);
+    			String command = turn.getCommand(continent);
+    			System.out.println(command);
+    			return command.toLowerCase();
 			}
 		}
+
     	return map.stream().filter(turn::canUse).findFirst().map(turn::getCommand).orElse("skip");
 	}
 
