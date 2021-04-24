@@ -623,7 +623,7 @@ public class BeachArcade implements Bot {
 			timesUsedThisTurn = 0;
 			for (Territory territory : continent.values()) {
 				int terrID = territory.id;
-				System.out.println(terrID + ", " + territory.name + " updated, in continent " + id + ", " + name);
+		//?		System.out.println(terrID + ", " + territory.name + " updated, in continent " + id + ", " + name);
 				updateTerritory(territory, board.getNumUnits(terrID), board.getOccupier(terrID));
 			}
 		}
