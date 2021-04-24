@@ -66,7 +66,17 @@ public class BeachArcade implements Bot {
 	 * @return String, the name of the territory
 	 */
 	public String getPlacement(int forPlayer) {
-		//! ratio will be defined as .66 for now
+		map.startTurn(board);
+		for(int i = 0; i < 6; i++){
+			System.out.println(i + ": " + map.getContinent(i).toString());
+
+		}		//! ratio will be defined as .66 for now
+		System.out.println("Running get placement...");
+		System.out.println("BotID: " + map.getBotID() + "\tPlayerID: " + forPlayer );
+		System.out.println("Continent ID: " + map.getContinent(0).id);
+		for(Territory t: map.getContinent(0).getTerritories()){
+			System.out.println(t.toString());
+		}
 		double ratio = .66;
 		Continent continent; //Will be initialized as the highest or lowest priority for bot or neutral respectively
 		int ratioCase; //Cases: // 1.) Over // 2.) Under // 3.) 100%
@@ -76,8 +86,9 @@ public class BeachArcade implements Bot {
 			continent = map.getContinent(5); //Set it to the lowest priority territory
 		}
 		ratioCase = (map.getRatio(continent.id) == 1? 3 : (map.getRatio(continent.id) > ratio? 1 : 2)); //sets the case to over under or 100%
-		return findLowest(continent, forPlayer).toString();
-
+		String b =  findLowest(continent, forPlayer).toString();
+		System.out.println("DEBUG 2: " + b);
+		return b;
 	}
 	//* This is supposed to be used to evenly distribute troops among a continent
 	/**
@@ -86,21 +97,21 @@ public class BeachArcade implements Bot {
 	 * @param playerID: the player's id
 	 * @return the territory with the lowest amount of troops
 	 */
-	Territory findLowest(Continent continent, int playerID){
+	String findLowest(Continent continent, int playerID){
 		Territory terr = null; //will be territory with the lowest troops
+		boolean hasTerr = false;
 		for(int i = 0; i < continent.totalTerritories; i++){
 			if(continent.getTerritory(i).occupierID == playerID){
-				if(terr != null) {
-					if (continent.getTerritory(i).numUnits > terr.numUnits) {
-						terr = continent.getTerritory(i);
-					}
-				}
-				else{
-					terr = continent.getTerritory(i);
-				}
+				terr = map.getTerritory(i);
+				hasTerr = true;
 			}
 		}
-		return terr;
+		if(!hasTerr){
+			System.out.println("Terr is null. This is no good");
+		}
+		else
+			System.out.println("DEBUG: " + terr.toString());
+		return terr.getName();
 	}
 	//? We can probably take this out. But we may be able to use it for strategize
 	/**
@@ -157,7 +168,8 @@ public class BeachArcade implements Bot {
      * @return String, command in the form "Territory Name" "Number of Reinforcements".
      */
     public String getReinforcement() {
-		return getCommand(Reinforcement.turn);
+		//return getCommand(Reinforcement.turn);
+		return getPlacement(map.getBotID()) + " 3";
     }
 
     /**
@@ -232,6 +244,96 @@ public class BeachArcade implements Bot {
 		return decisions.poll().command;
     }
 
+	/**
+	 * This is the case when the bot controlls a co
+	 * @param continent
+	 * @return
+	 */
+	private Territory attackFromOtherContinent(Continent continent) {
+		Territory highestOwned = null; //The friendly territory with the most amount of troops on another continent
+		ArrayList<Territory> owned = new ArrayList<Territory>();
+
+		for (Territory t : continent.getTerritories()) { //Loop thru all territories in the continent
+			for (int id : GameData.ADJACENT[t.id]) { //loop thru all adjacents
+
+				if (map.belongsTo(id, map.getBotID())) { //When the territory is owned by the bot
+					owned.add(map.getTerritory(id));
+
+					if (highestOwned == null) {	//the first time the loop finds an owned territory
+						highestOwned = owned.get(0);
+					} else {
+						if (highestOwned.numUnits - map.getTerritory(id).numUnits <	//When the the current territory has a better chance of winning than the other
+								t.numUnits - map.getTerritory(id).numUnits) {
+							highestOwned = t;
+						}
+					}
+				}
+			}
+		}
+		return highestOwned;
+	}
+
+	/**
+	 * Used to find new territories on an adjacent continent
+	 * when the ratio is 100%
+	 * @param continent: Continent with the highest priority
+	 * @return the best place to attack from
+	 */
+	private Continent findNewCont(Continent continent){
+		Continent best = null; //Used to find the adjacent continent with the highest priority
+		Continent compare; //The continent that will be compared to best
+		ArrayList<Territory> criticalPoints= new ArrayList<Territory>(); //Stores the entry points to other continents
+
+		/*Go through all the adjacents of every territory in the continent and find
+		  the territories are in other continents (Critical Points) */
+		for(Territory t: continent.getTerritories()){ //loop through all territories
+			for(int id: GameData.ADJACENT[t.id]){ //Loop through all adjacents
+				if(GameData.CONTINENT_IDS[id] != continent.id){ //When the adjacent territory is in another continent
+					criticalPoints.add(map.getTerritory(id));
+				}
+			}
+		}
+		for(Territory t: criticalPoints){
+			compare = map.getContinent(GameData.CONTINENT_IDS[t.id]);
+			if(best == null){ //The first time the loop runs
+				best =  compare; //Set best to the first continent if its null
+			}
+			//When the adjacent continent has a higher priority than the current best
+			if(best.ratio() < compare.ratio() && compare.ratio() < 1){
+				best = compare; //Set best to compare because it has a higher priority
+			}
+		}
+    	return best;
+	}
+	public Territory findAttackSource(Continent continent, int playerID){
+		//! figure out what threshold should be for now its .5
+		double THRESHOLD = .5;
+		double ratio = continent.ratio();
+		Territory source = null;
+		//Go through all territories on that continent
+		Territory[] territories = continent.getTerritories();
+		if(ratio == 1){ //when ratio is 100%
+			//look thru adjacents to find one in another continent
+			source = findAttackSource(findNewCont(continent), playerID);
+		} else if (ratio > THRESHOLD){
+			//Find adjacent enemy territory with the smallest number of troops
+		} else {
+			//Attack only territory with the lowest amount of troops
+			//Make sure there is still a decent number left on it to fortify?
+		}
+		return source;
+	}
+	//TODO make sure itll take over a continent if its able
+	public Territory getAttackTarget(Territory source){
+    	Territory target = map.getTerritory(GameData.ADJACENT[source.id][0]);
+    	for(int id: GameData.ADJACENT[source.id]){
+    		if(source.numUnits - map.getTerritory(id).numUnits
+					> source.numUnits - target.numUnits){
+    			target = map.getTerritory(id);
+			}
+		}
+    	return target;
+	}
     /**
      * <p><strong>getBattle</strong> — For getting an attack command.</p>
      * <p>Used in bot's <em>attack stage</em>. Returns a String containing the country to attack from, the country to attack and the number of units to use, or "skip" to skip attack phase.</p>
@@ -487,12 +589,14 @@ public class BeachArcade implements Bot {
 		public Iterator<Territory> iterator() {
 			return continent.values().iterator();
 		}
+		public String toString(){
+			return GameData.CONTINENT_NAMES[id];
+		}
 	}
 
 	private static class Territory {
 		public final int id;
 		public final String name;
-
 		public int occupierID;
 		public int numUnits;
 
@@ -660,5 +764,12 @@ public class BeachArcade implements Bot {
 			weight = 0; //There's no strategic value in adding troops to a place like this
 		}
 		return weight;
+	}
+
+	public static void main(String[] args) {
+		Board b = new Board();
+		BeachArcade ass = new BeachArcade(b, new Player(0));
+
+		System.out.println("Running in the main " + ass.getPlacement(0));
 	}
 }
