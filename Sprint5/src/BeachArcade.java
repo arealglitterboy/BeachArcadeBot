@@ -565,10 +565,16 @@ public class BeachArcade implements Bot {
 		}
 	}
 
+	public static final int[] portsOfEntry = {3, 4, 5, 1, 2, 3};
+	public static final int[] portIDs = {0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0};
+
 	private class Continent implements Comparable<Continent>, Iterable<Territory> {
 		public final int id, botID;
 		public final String name;
 		private final TreeMap<Integer, Territory> continent;
+		private final Territory[] portTerritories;
+
+
 		private final double totalTerritories;
 		private int territoriesOwned;
 		private int botTroops, opponentTroops, neutralTroops;
@@ -580,11 +586,17 @@ public class BeachArcade implements Bot {
 			name = GameData.CONTINENT_NAMES[id];
 			this.botID = botID;
 			continent = new TreeMap<>();
+			portTerritories = new Territory[portsOfEntry[id] + 1];
 
 			totalTerritories = GameData.CONTINENT_COUNTRIES[continentID].length;
 
+			int i = 0;
 			for (int curr : GameData.CONTINENT_COUNTRIES[continentID]) {
 				continent.put(curr, new Territory(curr));
+				if (portIDs[curr] == 1) {
+					portTerritories[i] = continent.get(curr);
+					i++;
+				}
 			}
 
 			System.out.println(GameData.CONTINENT_NAMES[id] + "(" + id + ")" + " was created, " + totalTerritories + " total territories");
@@ -595,7 +607,12 @@ public class BeachArcade implements Bot {
 		 * @return <em>double</em>, ratio
 		 */
 		public double ratio() {
-			return territoriesOwned/totalTerritories;
+			return territoriesOwned / totalTerritories;
+//			return ((botTroops)/(0.0 + botTroops + neutralTroops + opponentTroops)) * (territoriesOwned / totalTerritories);
+		}
+
+		public double proportion() {
+			return (botTroops)/(0.0 + botTroops + neutralTroops + opponentTroops);
 		}
 
 		private void updateTroops(Territory territory, int sign) {
@@ -647,6 +664,19 @@ public class BeachArcade implements Bot {
 			return continent.values().iterator();
 		}
 
+		public Territory minPort(double safe) {
+			Territory min = portTerritories[0];
+
+			for (Territory port : portTerritories) {
+				double proportion = port.compareToAdjacents();
+				if (proportion < safe && proportion < min.compareToAdjacents()) {
+					min = port;
+				}
+			}
+
+			return (min.compareToAdjacents() < safe) ? min : null;
+		}
+
 		public String toString(){
 			return name + ", " + id;
 		}
@@ -677,7 +707,7 @@ public class BeachArcade implements Bot {
 
 		public Territory(int id) {
 			this.id = id;
-			name = GameData.COUNTRY_NAMES[id];
+			name = GameData.COUNTRY_NAMES[id].toLowerCase(Locale.ROOT).replaceAll("//s+", "");
 
 			occupierID = -1;
 			numUnits = -1;
@@ -711,6 +741,16 @@ public class BeachArcade implements Bot {
 
 		public int maxCompare(Territory that) {
 			return compareTo(that);
+		}
+
+		public double compareToAdjacents() {
+			double counterTroops = 0;
+
+			for (Territory adjacent : map.getAdjacents(id)) {
+				counterTroops += (!adjacent.belongsTo(occupierID)) ? adjacent.numUnits : 0;
+			}
+
+			return counterTroops;
 		}
 	}
 
@@ -783,9 +823,20 @@ public class BeachArcade implements Bot {
 	}
 
 	private class Reinforcement extends Turn {
+		public double ratio = 0.6;
+		public double safe = 0.4;
 		@Override
 		public String getCommand() {
 			// ! TEMP
+			Territory territory = null;
+			for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
+				Continent continent = map.getContinent(i);
+				if (continent.ratio() == 1) {
+					territory = continent.minPort(safe); // * Get the port with the lowest proportion of troops to adversaries
+				} else if (continent.proportion() < ratio) {
+
+				}
+			}
 			Territory result = map.getContinent(0).territories().min(Territory::maxCompare).orElse(null);
 			if (result == null) {
 				throw new IllegalStateException("Highest priority continent was empty");
