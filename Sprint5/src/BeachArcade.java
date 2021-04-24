@@ -54,21 +54,20 @@ public class BeachArcade implements Bot {
     	String command = turn.getCommand(); // * Get the command for this turn.
     	System.out.println(command);
     	return command;
+    }
 
-//    	return map.stream().filter(turn::canUse).findFirst().map(turn::getCommand).orElse("skip");
-	}
-
-	public String getPlacement2(int forPlayer) {
+	public String getPlacement(int forPlayer) {
     	map.setForPlayer(forPlayer);
     	return getCommand(Placement.turn);
 	}
+
 	/**
 	 * <p><strong>getPlacement</strong> — For placing of territories in <em>initialisation stage</em>.</p>
 	 * <p>Chooses a territory from one of the neutrals to place reinforcements on sending it to the board reinforcement (from the neutral player's reserves) on the selected territory.</p>
 	 * @param forPlayer The index of the player whose territories we are choosing from.
 	 * @return String, the name of the territory
 	 */
-	public String getPlacement(int forPlayer) {
+	public String getPlacementOLD(int forPlayer) {
 		map.startTurn(board);
 
 		for(int i = 0; i < 6; i++){
@@ -763,8 +762,17 @@ public class BeachArcade implements Bot {
 			int forPlayer = map.getForPlayer(); // * The neutral player that we set in getPlacement
 
 			for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; --i) { // * Loop backwards through the map
-				out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null); // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+				Continent continent = map.getContinent(i);
+
+				if (continent.opponentTroops > continent.neutralTroops * 1.2) {
+					for (Territory territory : continent) {
+						if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+							out = territory;
+						}
+					}
+				}
 			}
+
 			// * the territories(int playerID) method in continent returns a stream of territories belonging to the given player in that continent
 
 			System.out.println("DEBUG 2: " + out);
