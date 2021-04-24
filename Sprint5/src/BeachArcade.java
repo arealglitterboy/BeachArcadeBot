@@ -8,7 +8,13 @@ public class BeachArcade implements Bot {
     private BoardAPI board;
 	private PlayerAPI player;
 
-    private static GameMap map;
+    public GameMap map;
+
+    public Placement placement = new Placement();
+    public Reinforcement reinforcement = new Reinforcement();
+    public Battle battle = new Battle();
+    public MoveIn moveIn = new MoveIn();
+    public Fortify fortify = new Fortify();
 
 	protected static int selectedTerritory; // * Holds the ID of the target of an attack
 	// * initialisation: place your troops inside the cluster, place neutrals away from you
@@ -59,7 +65,7 @@ public class BeachArcade implements Bot {
 	public String getPlacement(int forPlayer) {
     	System.out.println("--------------------------------------------------------------\nHELLO");
     	map.setForPlayer(forPlayer);
-    	return getCommand(Placement.turn);
+    	return getCommand(placement);
 	}
 
 	/**
@@ -193,7 +199,7 @@ public class BeachArcade implements Bot {
      * @return String, command in the form "Territory Name" "Number of Reinforcements".
      */
     public String getReinforcement() {
-		return getCommand(Reinforcement.turn).toLowerCase(Locale.ROOT);
+		return getCommand(reinforcement);
 //		System.out.println("HELLO, WE'RE IN GET REINFORCEMENTS");
 //		return getPlacement(map.getBotID()) + " 3";
     }
@@ -367,7 +373,7 @@ public class BeachArcade implements Bot {
      * @return String representing attack command ("from", "to", "units")
      */
     public String getBattle() {
-    	return getCommand(Battle.turn);
+    	return getCommand(battle);
     }
 
     /**
@@ -406,7 +412,7 @@ public class BeachArcade implements Bot {
 	 * @return String representing fortify command ("from", "to", "units")
 	 */
 	public String getFortify () {
-		return getCommand(Fortify.turn);
+		return getCommand(fortify);
 	}
 
 	/* * Internal Methods * */
@@ -433,7 +439,7 @@ public class BeachArcade implements Bot {
 		Stream<Continent> stream();
 	}
 
-	private static class Map extends ArrayList<Continent> implements GameMap {
+	private class Map extends ArrayList<Continent> implements GameMap {
 		private final int[] indexes; // * Holds the indexes of the continents in the arraylist based on their ID
 		public final int botID;
 		public int forPlayer;
@@ -559,7 +565,7 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Continent implements Comparable<Continent>, Iterable<Territory> {
+	private class Continent implements Comparable<Continent>, Iterable<Territory> {
 		public final int id, botID;
 		public final String name;
 		private final TreeMap<Integer, Territory> continent;
@@ -602,26 +608,15 @@ public class BeachArcade implements Bot {
 			}
 		}
 
-		public void updateTerritory(int territoryID, int numUnits, int occupierID) {
-			updateTroops(getTerritory(territoryID), -1); // * Remove the troops associated with this territory
-
-			if (getTerritory(territoryID).occupierID == botID ^ occupierID == botID) { // # If the bot lost/gained this territory in the update
-				territoriesOwned += (occupierID == botID) ? +1 : -1;  // * If the new ID is the bot's, add 1, if it's not, remove 1
-			}
-			getTerritory(territoryID).updateTerritory(numUnits, occupierID);
-
-			updateTroops(getTerritory(territoryID), 1); // * Re add the (possibly altered) troops associated with this territory
-		}
-
 		public void updateTerritory(Territory territory, int numUnits, int occupierID) {
-			updateTroops(territory, -1);
+			updateTroops(territory, -1); // * Remove the troops associated with this territory
 
-			if (territory.belongsTo(botID) ^ occupierID == botID) {
-				territoriesOwned += (occupierID == botID) ? +1 : -1;
+			if (territory.belongsTo(botID) ^ occupierID == botID) { // # If the bot lost/gained this territory in the update
+				territoriesOwned += (occupierID == botID) ? +1 : -1;  // * If the new ID is the bot's, add 1, if it's not, remove 1
 			}
 			territory.updateTerritory(numUnits, occupierID);
 
-			updateTroops(territory, 1);
+			updateTroops(territory, 1); // * Re add the (possibly altered) troops associated with this territory
 		}
 
 		public void update(BoardAPI board) {
@@ -631,9 +626,6 @@ public class BeachArcade implements Bot {
 				System.out.println(terrID + ", " + territory.name + " updated, in continent " + id + ", " + name);
 				updateTerritory(territory, board.getNumUnits(terrID), board.getOccupier(terrID));
 			}
-//			for (int territory : GameData.CONTINENT_COUNTRIES[id]) {
-//				updateTerritory(territory, board.getNumUnits(territory), board.getOccupier(territory));
-//			}
 		}
 
 		public Territory getTerritory(int territoryID) {
@@ -677,12 +669,11 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Territory implements Comparable<Territory> {
+	private class Territory implements Comparable<Territory> {
 		public final int id;
 		public final String name;
 		public int occupierID;
 		public int numUnits;
-
 
 		public Territory(int id) {
 			this.id = id;
@@ -724,7 +715,7 @@ public class BeachArcade implements Bot {
 	}
 
 	// ! Not sure about using this one anymore
-	private static class Decision implements Comparable<Decision> {
+	private class Decision implements Comparable<Decision> {
 		String command;
 		int weight;
 
@@ -754,9 +745,7 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Placement extends Turn {
-		public static final Turn turn = new Placement();
-
+	private class Placement extends Turn {
 		@Override
 		public String getCommand() {
 			Territory out = null;
@@ -784,7 +773,7 @@ public class BeachArcade implements Bot {
 			if (out == null) {
 				throw new IllegalStateException("No neutral territory was found");
 			}
-			return out.name;
+			return out.name.replaceAll("\\s+", "");
 		}
 
 		@Override
@@ -793,28 +782,17 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Reinforcement extends Turn {
-		public static final Turn turn = new Reinforcement();
-
+	private class Reinforcement extends Turn {
 		@Override
 		public String getCommand() {
 			// ! TEMP
-			Territory result = map.getContinent(0).territories().min(Territory::compareTo).orElse(null);
+			Territory result = map.getContinent(0).territories().min(Territory::maxCompare).orElse(null);
 			if (result == null) {
 				throw new IllegalStateException("Highest priority continent was empty");
 			}else {
 				System.out.println("We chose " + result.name);
 			}
-//			for (Territory territory : map.getContinent(0)) {
-//				if (territory.belongsTo(map.getBotID())) {
-//					if (terr != null) {
-//						terr = (terr.numUnits < territory.numUnits) ? terr : territory;
-//					} else {
-//						terr = territory;
-//					}
-//				}
-//			}
-			return result.name + " 3";
+			return result.name.replaceAll("\\s+", "") + " " + Math.min(player.getNumUnits(), 2);
 		}
 
 		@Override
@@ -832,8 +810,7 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Battle extends Turn {
-		public static final Turn turn = new Battle();
+	private class Battle extends Turn {
 		public int attackingTerritory;
 		public int defendingTerritory;
 
@@ -851,9 +828,7 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class MoveIn extends Turn {
-		public static final Turn turn = new MoveIn();
-
+	private class MoveIn extends Turn {
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
 		public String getCommand() {
@@ -866,9 +841,7 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Fortify extends Turn {
-		public static final Turn turn = new Fortify();
-
+	private class Fortify extends Turn {
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
 		public String getCommand() {
