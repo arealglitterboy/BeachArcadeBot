@@ -739,6 +739,8 @@ public class BeachArcade implements Bot {
 			Territory result = map.getContinent(0).territories().min(Territory::compareTo).orElse(null);
 			if (result == null) {
 				throw new IllegalStateException("Highest priority continent was empty");
+			}else {
+				System.out.println("We chose " + result.name);
 			}
 //			for (Territory territory : map.getContinent(0)) {
 //				if (territory.belongsTo(map.getBotID())) {
