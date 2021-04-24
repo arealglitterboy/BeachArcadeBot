@@ -49,20 +49,19 @@ public class BeachArcade implements Bot {
     }
 
     private String getCommand(Turn turn) {
-    	map.startTurn(board);
+    	map.startTurn(board); // * Update the map to the changes made on the board
 
-    	for (Continent continent : map) {
-    		if (turn.canUse(continent)) {
-    			System.out.println(continent);
-    			String command = turn.getCommand(continent);
-    			System.out.println(command);
-    			return command.toLowerCase();
-			}
-		}
+    	String command = turn.getCommand(); // * Get the command for this turn.
+    	System.out.println(command);
+    	return command;
 
-    	return map.stream().filter(turn::canUse).findFirst().map(turn::getCommand).orElse("skip");
+//    	return map.stream().filter(turn::canUse).findFirst().map(turn::getCommand).orElse("skip");
 	}
 
+	public String getPlacement2(int forPlayer) {
+    	map.setForPlayer(forPlayer);
+    	return getCommand(Placement.turn);
+	}
 	/**
 	 * <p><strong>getPlacement</strong> — For placing of territories in <em>initialisation stage</em>.</p>
 	 * <p>Chooses a territory from one of the neutrals to place reinforcements on sending it to the board reinforcement (from the neutral player's reserves) on the selected territory.</p>
@@ -413,6 +412,7 @@ public class BeachArcade implements Bot {
 	/* * Internal Methods * */
 	private interface GameMap extends Iterable<Continent> {
 		int getBotID();
+		int getForPlayer();
 		Territory getTerritory(int territory);
 		Continent getContinent(int continent);
 		Territory[] getTerritories(int continent);
@@ -424,6 +424,7 @@ public class BeachArcade implements Bot {
 		boolean belongsTo(int territoryID, int playerID);
 		boolean belongsTo(int territoryID);
 
+		void setForPlayer(int forPlayer);
 		void setAttacking(int territory);
 		void setDefending(int territory);
 
@@ -435,6 +436,7 @@ public class BeachArcade implements Bot {
 	private static class Map extends ArrayList<Continent> implements GameMap {
 		private final int[] indexes; // * Holds the indexes of the continents in the arraylist based on their ID
 		public final int botID;
+		public int forPlayer;
 		public int attacking, defending; // * Holds the currently targeted territory
 
 		public Map(int playerID) {
@@ -450,6 +452,11 @@ public class BeachArcade implements Bot {
 		@Override
 		public int getBotID() {
 			return botID;
+		}
+
+		@Override
+		public int getForPlayer() {
+			return forPlayer;
 		}
 
 		@Override
@@ -506,6 +513,11 @@ public class BeachArcade implements Bot {
 		@Override
 		public boolean belongsTo(int territoryID) {
 			return belongsTo(territoryID, botID);
+		}
+
+		@Override
+		public void setForPlayer(int forPlayer) {
+			this.forPlayer = forPlayer;
 		}
 
 		@Override
@@ -701,6 +713,14 @@ public class BeachArcade implements Bot {
 		public int compareTo(Territory that) {
 			return Integer.compare(that.numUnits, this.numUnits);
 		}
+
+		public int minCompare(Territory that) {
+			return -1 * compareTo(that);
+		}
+
+		public int maxCompare(Territory that) {
+			return compareTo(that);
+		}
 	}
 
 	// ! Not sure about using this one anymore
@@ -723,7 +743,7 @@ public class BeachArcade implements Bot {
 		protected double ratio;
 
 		// * Based on the ratio of the continent, get a command
-		public abstract String getCommand(Continent continent);
+		public abstract String getCommand();
 
 		public boolean canUse(Continent continent) {
 			return true;
@@ -734,11 +754,37 @@ public class BeachArcade implements Bot {
 		}
 	}
 
+	private static class Placement extends Turn {
+		public static final Turn turn = new Placement();
+
+		@Override
+		public String getCommand() {
+			Territory out = null;
+			int forPlayer = map.getForPlayer(); // * The neutral player that we set in getPlacement
+
+			for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; --i) { // * Loop backwards through the map
+				out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null); // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+			}
+			// * the territories(int playerID) method in continent returns a stream of territories belonging to the given player in that continent
+
+			System.out.println("DEBUG 2: " + out);
+			if (out == null) {
+				throw new IllegalStateException("No neutral territory was found");
+			}
+			return out.name;
+		}
+
+		@Override
+		public String cancel() {
+			throw new IllegalStateException("Can't cancel placement of neutrals");
+		}
+	}
+
 	private static class Reinforcement extends Turn {
 		public static final Turn turn = new Reinforcement();
 
 		@Override
-		public String getCommand(Continent continent) {
+		public String getCommand() {
 			// ! TEMP
 			Territory result = map.getContinent(0).territories().min(Territory::compareTo).orElse(null);
 			if (result == null) {
@@ -780,7 +826,7 @@ public class BeachArcade implements Bot {
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
-		public String getCommand(Continent continent) {
+		public String getCommand() {
 
 			return null;
 		}
@@ -797,7 +843,7 @@ public class BeachArcade implements Bot {
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
-		public String getCommand(Continent continent) {
+		public String getCommand() {
 			return null;
 		}
 
@@ -812,7 +858,7 @@ public class BeachArcade implements Bot {
 
 		// ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
 		@Override
-		public String getCommand(Continent continent) {
+		public String getCommand() {
 			return null;
 		}
 
