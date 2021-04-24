@@ -53,7 +53,7 @@ public class BeachArcade implements Bot {
 
     	String command = turn.getCommand(); // * Get the command for this turn.
     	System.out.println(command);
-    	return command.toLowerCase();
+    	return command;
     }
 
 	public String getPlacement(int forPlayer) {
@@ -193,7 +193,7 @@ public class BeachArcade implements Bot {
      * @return String, command in the form "Territory Name" "Number of Reinforcements".
      */
     public String getReinforcement() {
-		return getCommand(Reinforcement.turn).toLowerCase(Locale.ROOT);
+		return getCommand(Reinforcement.turn);
 //		System.out.println("HELLO, WE'RE IN GET REINFORCEMENTS");
 //		return getPlacement(map.getBotID()) + " 3";
     }
