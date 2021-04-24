@@ -322,7 +322,15 @@ public class BeachArcade implements Bot {
 
 		@Override
 		public Territory getTerritory(int territory) {
-			return get(getContinentID(territory)).getTerritory(territory);
+			int territoryContinent = getContinentID(territory);
+
+			for (Continent continent : this) {
+				if (continent.id == territoryContinent) {
+					return continent.getTerritory(territory);
+				}
+			}
+
+			throw new IllegalStateException("Invalid territory index passed to map, " + territory);
 		}
 
 		@Override
@@ -385,7 +393,7 @@ public class BeachArcade implements Bot {
 		@Override
 		public void startTurn(BoardAPI board) {
 			forEach(continent -> continent.update(board)); // * Send the board to each continent to get its changes
-			sort(Continent::compareTo); // * Sort the array based on the priority level
+			sort(Continent::compareTo); // * Sort the array list based on the priority level
 		}
 
 		@Override
@@ -404,12 +412,14 @@ public class BeachArcade implements Bot {
 		}
 	}
 
-	private static class Continent implements Comparable<Continent> {
+	private static class Continent implements Comparable<Continent>, Iterable<Territory> {
 		public final int id, botID;
 		private final TreeMap<Integer, Territory> continent;
 		private final double totalTerritories;
 		private int territoriesOwned;
-		private int timesUsedThisTurn; // * Might be useful to put a cap on the number of turns in a move, but still allow multiple moves on different territories.
+		private int botTroops, opponentTroops, neutralTroops;
+		private int timesUsedThisTurn; // * Might be useful to put a cap on the number of turns in a move, but still allow multiple moves on different territories
+		// * As in, if we have multiple continents at 100%, we don't just focus on one if we are capable of doing multiple moves.
 
 		public Continent(int continentID, int botID) {
 			id = continentID;
@@ -433,11 +443,25 @@ public class BeachArcade implements Bot {
 			return territoriesOwned/totalTerritories;
 		}
 
+		private void updateTroops(Territory territory, int sign) {
+			if (territory.belongsTo(map.getBotID())) {
+				botTroops += sign * territory.numUnits;
+			} else if (territory.belongsTo((map.getBotID() + 1) % 2)) {
+				opponentTroops += sign * territory.numUnits;
+			} else {
+				neutralTroops += sign * territory.numUnits;
+			}
+		}
+
 		public void updateTerritory(int territoryID, int numUnits, int occupierID) {
+			updateTroops(getTerritory(territoryID), -1); // * Remove the troops associated with this territory
+
 			if (getTerritory(territoryID).occupierID == botID ^ occupierID == botID) { // # If the bot lost/gained this territory in the update
 				territoriesOwned += (occupierID == botID) ? +1 : -1;  // * If the new ID is the bot's, add 1, if it's not, remove 1
 			}
 			getTerritory(territoryID).updateTerritory(numUnits, occupierID);
+
+			updateTroops(getTerritory(territoryID), 1); // * Re add the (possibly altered) troops associated with this territory
 		}
 
 		public void update(BoardAPI board) {
@@ -458,6 +482,11 @@ public class BeachArcade implements Bot {
 		@Override
 		public int compareTo(Continent that) {
 			return (int) (this.ratio() - that.ratio())*100;
+		}
+
+		@Override
+		public Iterator<Territory> iterator() {
+			return continent.values().iterator();
 		}
 	}
 
