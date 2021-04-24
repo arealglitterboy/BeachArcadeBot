@@ -490,14 +490,18 @@ public class BeachArcade implements Bot {
 	}
 
 	private static class Territory {
+		public final int id;
+		public final String name;
 		public int occupierID;
 		public int numUnits;
-		public int id;
+
 
 		public Territory(int id) {
+			this.id = id;
+			name = GameData.COUNTRY_NAMES[id];
+
 			occupierID = -1;
 			numUnits = -1;
-			this.id = id;
 		}
 
 		public void updateTerritory(int numUnits, int occupierID) {
