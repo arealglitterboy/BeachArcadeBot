@@ -53,10 +53,11 @@ public class BeachArcade implements Bot {
 
     	String command = turn.getCommand(); // * Get the command for this turn.
     	System.out.println(command);
-    	return command;
+    	return command.toLowerCase();
     }
 
 	public String getPlacement(int forPlayer) {
+    	System.out.println("--------------------------------------------------------------\nHELLO");
     	map.setForPlayer(forPlayer);
     	return getCommand(Placement.turn);
 	}
@@ -192,7 +193,7 @@ public class BeachArcade implements Bot {
      * @return String, command in the form "Territory Name" "Number of Reinforcements".
      */
     public String getReinforcement() {
-		return getCommand(Reinforcement.turn);
+		return getCommand(Reinforcement.turn).toLowerCase(Locale.ROOT);
 //		System.out.println("HELLO, WE'RE IN GET REINFORCEMENTS");
 //		return getPlacement(map.getBotID()) + " 3";
     }
@@ -762,6 +763,10 @@ public class BeachArcade implements Bot {
 			int forPlayer = map.getForPlayer(); // * The neutral player that we set in getPlacement
 
 			for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; --i) { // * Loop backwards through the map
+				out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null);
+			}
+			Territory old = out;
+			for (int i = GameData.NUM_CONTINENTS - 1; out == old && i >= 0; --i) { // * Loop backwards through the map
 				Continent continent = map.getContinent(i);
 
 				if (continent.opponentTroops > continent.neutralTroops * 1.2) {
