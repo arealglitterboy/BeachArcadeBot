@@ -53,7 +53,7 @@ public class BeachArcade implements Bot {
 
     	String command = turn.getCommand(); // * Get the command for this turn.
     	System.out.println(command);
-    	return command;
+    	return command.toLowerCase();
     }
 
 	public String getPlacement(int forPlayer) {
@@ -628,7 +628,7 @@ public class BeachArcade implements Bot {
 			timesUsedThisTurn = 0;
 			for (Territory territory : continent.values()) {
 				int terrID = territory.id;
-				System.out.println(terrID + ", " + territory.name + " updated, in continent " + id + ", " + name);
+		//?		System.out.println(terrID + ", " + territory.name + " updated, in continent " + id + ", " + name);
 				updateTerritory(territory, board.getNumUnits(terrID), board.getOccupier(terrID));
 			}
 //			for (int territory : GameData.CONTINENT_COUNTRIES[id]) {
