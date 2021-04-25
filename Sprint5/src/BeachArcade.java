@@ -834,10 +834,11 @@ public class BeachArcade implements Bot {
 
 		@Override
 		public String getCommand() {
-			Territory territory = null;
+			Territory territory;
 			for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
 				System.out.println(map.getContinent(i));
 			}
+            // * Could replace with a for loop and a switch statement. Loop terminates when the territory has been selected.
 
 			territory = getTerritory(full); // * Get the port with the lowest proportion of troops to adversaries, or null if safe
 			if (territory == null) {
@@ -880,6 +881,7 @@ public class BeachArcade implements Bot {
 //
 //        private final Check partial = check -> check != null && map.belongsTo(check.id) && check.compareToAdjacents() <= aggressive;
 //        private final Check below = check -> check != null && map.belongsTo(check.id);
+
 
         private Territory findNextToAdjacent(Continent continent, Check filter) {
             for (Territory curr : continent) {
@@ -965,15 +967,16 @@ public class BeachArcade implements Bot {
             Territory[] allTerritories = continent.getTerritories();
             Territory[] adjacentTerritories;
             Territory[] attackDefend =  new Territory[2];
-            for (Territory currentTerritory : allTerritories) { //Look at all territories in a continent
-                if(!currentTerritory.belongsTo((map.getBotID()))) { //Find territories that belong to the other player
+            String defender;
+            for (Territory currentTerritory : allTerritories) {
+                if(!currentTerritory.belongsTo(map.getBotID())) {
                     adjacentTerritories = map.getAdjacents(currentTerritory.id);
                     for (Territory adj : adjacentTerritories) { //cycle through adjacents to the current territory
-                        if (adj.belongsTo(map.getBotID()) //&& adj.numUnits >= currentTerritory.numUnits
-                            && adj.numUnits >= 2) {
-                        attack = adj;
-                        defend = currentTerritory;
-                            System.out.println("Attacker: " + attack.name + "\tDefender: " + defend.name);
+                        if (adj.belongsTo(map.getBotID()) && adj.numUnits >= currentTerritory.numUnits) {
+//                        botAttacking = adj;
+//                        enemyDefending = currentTerritory;
+                        attackDefend[0] = adj;
+                        attackDefend[1] = currentTerritory;
                         return attackDefend;
                         }
                     }
@@ -1048,13 +1051,13 @@ public class BeachArcade implements Bot {
                 }
 
             }
+            if(startingTerritory == null && targetTerritory != null)
 
             if (startingTerritory == null || targetTerritory == null)
-                return "skip";
-                //throw new IllegalStateException("There are no nice way of fortifying with this continent. Every continent in the queue was incompatible");
+                throw new IllegalStateException("There are no nice way of fortifying with this continent. Every continent in the queue was incompatible");
 
 
-            return startingTerritory.territoryName().replaceAll("\\s", "") + " " + targetTerritory.territoryName().replaceAll("\\s", "") + " " + (int)(startingTerritory.numUnits * .6);
+            return startingTerritory.territoryName().replaceAll("\\s", "") + (startingTerritory.numUnits * .6) + targetTerritory.territoryName().replaceAll("\\s", "");
         }
 
         @Override
@@ -1145,6 +1148,22 @@ public class BeachArcade implements Bot {
         }
         return maxThreat;
     }
+    //        Territory maxThreat = null;
+    //
+    //        for (Territory port : continent.portTerritories) {
+    //
+    //        }
+    //        for (Territory currentTerritory : continent.getTerritories()) {
+    //            if (currentTerritory.occupierID != map.getBotID()) {
+    //                for (Territory adj : map.getAdjacents(currentTerritory.id)) {
+    //                    if (maxThreat == null) {
+    //                        maxThreat = adj;
+    //                    }
+    //                    if (adj.belongsTo(map.getBotID()) && currentTerritory.numUnits > maxThreat.numUnits) {
+    //                        maxThreat = adj;
+    //                    }
+    //                }
+    //            }
     private Territory subPartialRatio(Continent continent){
         Territory[] adjacentTerritories;
         Territory[] allTerritories = continent.getTerritories();
