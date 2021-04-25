@@ -862,18 +862,10 @@ public class BeachArcade implements Bot {
 
 		@Override
 		public String getCommand() {
-			Territory territory = null;
+			Territory territory;
 			for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
 				System.out.println(map.getContinent(i));
 			}
-//			for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
-//				Continent continent = map.getContinent(i);
-//				if (continent.ratio() == 1) { // # If the bot owns the whole continent
-//					territory = fullRatio(continent);
-//				} else {
-//				    break; // * Continents are in order
-//                }
-//			}
             // * Could replace with a for loop and a switch statement. Loop terminates when the territory has been selected.
 			territory = getTerritory(full); // * Get the port with the lowest proportion of troops to adversaries, or null if safe
 			if (territory == null) {
@@ -885,28 +877,6 @@ public class BeachArcade implements Bot {
             if (territory == null) {
                 territory = getTerritory(lastSearch);
             }
-//            for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
-//                Continent continent = map.getContinent(i);
-//                if (continent.ratio() >= ratio && continent.proportion() < safe) { // # If the bot has more territories than ratio, but less troops as a proportion to others that we would define as safe
-//                    System.out.println(continent + ": Continent ratio, " + continent.ratio() + ", is greater than " + ratio + ", proportion of troops is " + continent.proportion() + ", which is less than " + safe);
-//                    System.out.println(continent.botTroops + " bot troops, " + continent.opponentTroops + " opponent troops, " + continent.neutralTroops + " neutral troops");
-//                    territory = partialRatio(continent);
-//                }
-//            }
-
-//            for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
-//                Continent continent = map.getContinent(i);
-//                if (continent.proportion() < safe) { // # If the bot has less troops than we define as safe
-//                    System.out.println(continent + ": Troop proportion , " + continent.proportion() + ", is less than than " + safe);
-//                    territory = findNextToAdjacent(continent, below);
-//                }
-//            }
-
-            // * If no territory was selected
-//            for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
-//                Continent continent = map.getContinent(i);
-//                territory = belowRatio(continent);
-//            }
 
             if (territory == null) {
                 System.out.println("**************************************************\nReinforcements failed\n**************************************************");
@@ -925,18 +895,11 @@ public class BeachArcade implements Bot {
 		private final Find partial2 = continent -> findNextToAdjacent(continent, check -> check != null && map.belongsTo(check.id));
 		private final Find lastSearch = this::belowRatio;
 
-        private Territory fullRatio(Continent continent) {
-            return continent.minPort(safe);  // * Get the port with the lowest proportion of troops to adversaries, or null if safe
-        }
-
         private Territory partialRatio(Continent continent) {
             Territory port = continent.minPort(safe);
             Territory defend = continent.territories().max(Territory::compareAdjacents).filter(curr -> curr.compareToAdjacents() < aggressive).orElse(null);
             return (port != null) ? port : defend;
         }
-
-        private final Check partial = check -> check != null && map.belongsTo(check.id) && check.compareToAdjacents() <= aggressive;
-        private final Check below = check -> check != null && map.belongsTo(check.id);
 
         private Territory findNextToAdjacent(Continent continent, Check filter) {
             for (Territory curr : continent) {
@@ -1085,7 +1048,6 @@ public class BeachArcade implements Bot {
 
         @Override
         public String getCommand() {
-            String command = "";
             ArrayList<Territory> startingTerritories = findStartingTerritories();
             Territory startingTerritory = null;
             Territory targetTerritory = null;
@@ -1191,14 +1153,17 @@ public class BeachArcade implements Bot {
 
     }
     private Territory partialRatio(Continent continent){// Focus on placing troops near the country with the most troops that isn't owned by the bot   PURE FRONT LINES
-        Territory[] adjacentTerritories;
-        Territory[] allTerritories = continent.getTerritories();
-        Territory maxThreat = new Territory(99);
-        maxThreat.numUnits = 0; // maxThreat is the most threatening place to put troops on the offensive
-        for (Territory currentTerritory : allTerritories) {
+        Territory maxThreat = null;
+
+        for (Territory port : continent.portTerritories) {
+
+        }
+        for (Territory currentTerritory : continent.getTerritories()) {
             if (currentTerritory.occupierID != map.getBotID()) {
-                adjacentTerritories = map.getAdjacents(currentTerritory.id);
-                for (Territory adj : adjacentTerritories) {
+                for (Territory adj : map.getAdjacents(currentTerritory.id)) {
+                    if (maxThreat == null) {
+                        maxThreat = adj;
+                    }
                     if (adj.belongsTo(map.getBotID()) && currentTerritory.numUnits > maxThreat.numUnits) {
                         maxThreat = adj;
                     }
