@@ -63,6 +63,11 @@ public class BeachArcade implements Bot {
 		map.startTurn(board); // * Update the map to the changes made on the board
 
 		System.out.println();
+		try {
+            Thread.sleep(100);
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
     	String command = turn.getCommand(); // * Get the command for this turn.
     	System.out.println("====================================\nCommand: " + command + "\n====================================");
     	return command.toLowerCase();
@@ -1015,9 +1020,9 @@ public class BeachArcade implements Bot {
                     }
                 }
             }
-            if (targetContinent == null) {
-                throw new IllegalStateException("No Adjacent continent was found");
-            }
+//            if (targetContinent == null) {
+//                throw new IllegalStateException("No Adjacent continent was found");
+//            }
             return targetContinent;
         }
 
