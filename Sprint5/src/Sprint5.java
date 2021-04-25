@@ -22,8 +22,10 @@ public class Sprint5 {
 				players[playerId].setBot(new BeachArcade(board,players[playerId]));
 			}
 			if (playerId < GameData.NUM_PLAYERS) {
-				name = ui.inputName(players[playerId]);
-				players[playerId].setName(name);
+//				name = ui.inputName(players[playerId]);
+//				players[playerId].setName(name);
+				name = "RED BOT";
+				players[playerId].setBot(new BeachArcade(board, players[playerId]));
 			} else {
 				name = "Neutral " + (playerId - GameData.NUM_PLAYERS + 1);
 				ui.displayName(playerId,name);

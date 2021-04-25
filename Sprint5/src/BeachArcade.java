@@ -963,7 +963,7 @@ public class BeachArcade implements Bot {
             return command;
         }
 
-        public Territory[] conquerRemainingTerritories(Continent continent) { //goes thorugh all territories in the continent, f
+        public void conquerRemainingTerritories(Continent continent) { //goes thorugh all territories in the continent, f
             Territory[] allTerritories = continent.getTerritories();
             Territory[] adjacentTerritories;
             Territory[] attackDefend =  new Territory[2];
@@ -972,17 +972,16 @@ public class BeachArcade implements Bot {
                 if(!currentTerritory.belongsTo(map.getBotID())) {
                     adjacentTerritories = map.getAdjacents(currentTerritory.id);
                     for (Territory adj : adjacentTerritories) { //cycle through adjacents to the current territory
-                        if (adj.belongsTo(map.getBotID()) && adj.numUnits >= currentTerritory.numUnits) {
+                        if (adj.belongsTo(map.getBotID()) && adj.numUnits >= 2) {
 //                        botAttacking = adj;
 //                        enemyDefending = currentTerritory;
-                        attackDefend[0] = adj;
-                        attackDefend[1] = currentTerritory;
-                        return attackDefend;
+                        attack = adj;
+                        defend = currentTerritory;
                         }
                     }
                 }
             }
-            return null;
+
         }
 
         /**
@@ -1051,13 +1050,12 @@ public class BeachArcade implements Bot {
                 }
 
             }
-            if(startingTerritory == null && targetTerritory != null)
 
             if (startingTerritory == null || targetTerritory == null)
-                throw new IllegalStateException("There are no nice way of fortifying with this continent. Every continent in the queue was incompatible");
+                return "skip";
 
 
-            return startingTerritory.territoryName().replaceAll("\\s", "") + (startingTerritory.numUnits * .6) + targetTerritory.territoryName().replaceAll("\\s", "");
+            return startingTerritory.territoryName().replaceAll("\\s", "") + " " + targetTerritory.territoryName().replaceAll("\\s", "") + " " + (int)(startingTerritory.numUnits * .6);
         }
 
         @Override
