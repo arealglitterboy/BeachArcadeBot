@@ -429,7 +429,6 @@ public class BeachArcade implements Bot {
 
         @Override
         public void startTurn(BoardAPI board) {
-        	System.out.println("Map Update:");
             forEach(continent -> continent.update(board)); // * Send the board to each continent to get its changes
             sort(Continent::compareTo); // * Sort the array list based on the priority level
 
@@ -502,7 +501,6 @@ public class BeachArcade implements Bot {
             for (int curr : GameData.CONTINENT_COUNTRIES[continentID]) {
                 continent.put(curr, new Territory(curr));
                 if (portIDs[curr] == 1) {
-                	System.out.println(name + ", the current number of ports is " + i + ", the current port index is " + curr + ", " + GameData.COUNTRY_NAMES[curr]);
                     portTerritories[i] = continent.get(curr);
                     i++;
                 }
@@ -601,7 +599,7 @@ public class BeachArcade implements Bot {
 				throw new IllegalStateException("We messed up bud");
 			}
 
-            return min;
+            return (min.compareToAdjacents() < safe) ? min : null;
         }
 
         public String toString() {
@@ -677,10 +675,6 @@ public class BeachArcade implements Bot {
             return compareTo(that);
         }
 
-        public int adjacentCompare(Territory that) {
-        	return Integer.compare(that.numAdjacentUnowned(), this.numAdjacentUnowned());
-		}
-
         public double compareToAdjacents() {
             double counterTroops = 0;
 
@@ -743,6 +737,8 @@ public class BeachArcade implements Bot {
         public int compareTo(Decision that) {
             return this.weight - that.weight;
         }
+
+
     }
 
     public interface Check {
@@ -763,10 +759,9 @@ public class BeachArcade implements Bot {
             return "skip";
         }
     }
-
     private class Placement extends Turn {
-        @Override
-        public String getCommand() {
+
+        public String getCommandOLD() {
             Territory out = null;
             int forPlayer = map.getForPlayer(); // * The neutral player that we set in getPlacement
 
@@ -776,10 +771,9 @@ public class BeachArcade implements Bot {
             Territory old = out;
             for (int i = GameData.NUM_CONTINENTS - 1; out == old && i >= 0; --i) { // * Loop backwards through the map
                 Continent continent = map.getContinent(i);
-
                 if (continent.opponentTroops > continent.neutralTroops * 1.2) {
                     for (Territory territory : continent) {
-                        if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+                         if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
                             out = territory;
                         }
                     }
@@ -787,12 +781,47 @@ public class BeachArcade implements Bot {
             }
 
             // * the territories(int playerID) method in continent returns a stream of territories belonging to the given player in that continent
+            if (out == null) {
+                throw new IllegalStateException("No neutral territory was found");
+            }
+            return out.name.replaceAll("\\s+", "");
+        }
+		@Override
+        public String getCommand() {
+			Territory out = null;
+			Territory old;
+			double otherRatio = 0;
+			double currRatio;
+			int forPlayer = map.getForPlayer();
+			for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; i--) {
+				out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null);
+			}
+			old = out;
+			for (int i = GameData.NUM_CONTINENTS - 1; i >= 0; i--) {
+				currRatio = otherPlayerRatio(map.getContinent(i));
+				if (currRatio > otherRatio) {
+					otherRatio = currRatio;
+					for (Territory territory : map.getContinent(i)) {
+						if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+							out = territory;
+						}
 
-			System.out.println("\tSelected: " + out);
+					}
+				}
+			}
 			if (out == null) {
 				throw new IllegalStateException("No neutral territory was found");
 			}
 			return out.name.replaceAll("\\s+", "");
+		}
+		public double otherPlayerRatio(Continent continent){
+        	double total = 0;
+        	for(Territory t: continent){
+        		if(t.belongsTo((map.getBotID() + 1 ) % 2)){
+        			total++;
+				}
+			}
+        	return total/continent.getTerritories().length;
 		}
 
         @Override
@@ -1067,8 +1096,6 @@ public class BeachArcade implements Bot {
 
     public static void main(String[] args) {
         Board b = new Board();
-        BeachArcade ass = new BeachArcade(b, new Player(0));
-
-        System.out.println("Running in the main " + ass.getPlacement(0));
+        BeachArcade bot = new BeachArcade(b, new Player(0));
     }
 }
