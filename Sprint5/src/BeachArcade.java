@@ -809,43 +809,45 @@ public class BeachArcade implements Bot {
             }
             return out.name.replaceAll("\\s+", "");
         }
-		@Override
-        public String getCommand() {
-			Territory out = null;
-			Territory old;
-			double otherRatio = 0;
-			double currRatio;
-			int forPlayer = map.getForPlayer();
-			for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; i--) {
-				out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null);
-			}
-			old = out;
-			for (int i = GameData.NUM_CONTINENTS - 1; i >= 0; i--) {
-				currRatio = otherPlayerRatio(map.getContinent(i));
-				if (currRatio > otherRatio) {
-					otherRatio = currRatio;
-					for (Territory territory : map.getContinent(i)) {
-						if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
-							out = territory;
-						}
 
-					}
-				}
-			}
-			if (out == null) {
-				throw new IllegalStateException("No neutral territory was found");
-			}
-			return out.name.replaceAll("\\s+", "");
-		}
-		public double otherPlayerRatio(Continent continent){
-        	double total = 0;
-        	for(Territory t: continent){
-        		if(t.belongsTo((map.getBotID() + 1 ) % 2)){
-        			total++;
-				}
-			}
-        	return total/continent.getTerritories().length;
-		}
+        @Override
+        public String getCommand() {
+            Territory out = null;
+            Territory old;
+            double otherRatio = 0;
+            double currRatio;
+            int forPlayer = map.getForPlayer();
+            for (int i = GameData.NUM_CONTINENTS - 1; out == null && i >= 0; i--) {
+                out = map.getContinent(i).territories(forPlayer).min(Territory::minCompare).orElse(null);
+            }
+            old = out;
+            for (int i = GameData.NUM_CONTINENTS - 1; i >= 0; i--) {
+                currRatio = otherPlayerRatio(map.getContinent(i));
+                if (currRatio > otherRatio) {
+                    otherRatio = currRatio;
+                    for (Territory territory : map.getContinent(i)) {
+                        if (territory.belongsTo(forPlayer) && territory.numUnits < 3) { // * If the neutral has pieces in this territory, find the min troops, otherwise null (continuing the loop)
+                            out = territory;
+                        }
+
+                    }
+                }
+            }
+            if (out == null) {
+                throw new IllegalStateException("No neutral territory was found");
+            }
+            return out.name.replaceAll("\\s+", "");
+        }
+
+        public double otherPlayerRatio(Continent continent) {
+            double total = 0;
+            for (Territory t : continent) {
+                if (t.belongsTo((map.getBotID() + 1) % 2)) {
+                    total++;
+                }
+            }
+            return total / continent.getTerritories().length;
+        }
 
         @Override
         public String cancel() {
@@ -853,10 +855,10 @@ public class BeachArcade implements Bot {
         }
     }
 
-	private class Reinforcement extends Turn {
-		public double ratio = 0.3;
-		public double aggressive = 4;
-		public double safe = 0.6;
+    private class Reinforcement extends Turn {
+        public double ratio = 0.3;
+        public double aggressive = 4;
+        public double safe = 0.6;
 
 		@Override
 		public String getCommand() {
@@ -906,17 +908,17 @@ public class BeachArcade implements Bot {
 //                territory = belowRatio(continent);
 //            }
 
-			if (territory == null) {
-				System.out.println("**************************************************\nReinforcements failed\n**************************************************");
-				return getRandomName() + " " + getNumUnits();
-			}
+            if (territory == null) {
+                System.out.println("**************************************************\nReinforcements failed\n**************************************************");
+                return getRandomName() + " " + getNumUnits();
+            }
 
-			return territory.name.replaceAll("\\s+", "") + " " + getNumUnits();
-		}
+            return territory.name.replaceAll("\\s+", "") + " " + getNumUnits();
+        }
 
-		private int getNumUnits() {
-			return Math.max(1, player.getNumUnits()/2);
-		}
+        private int getNumUnits() {
+            return Math.max(1, player.getNumUnits() / 2);
+        }
 
 		private final Find full = continent -> (continent.ratio() == 1) ? continent.minPort(safe) : null;
 		private final Find partial1 = continent -> (continent.ratio() >= ratio && continent.proportion() < safe) ? partialRatio(continent) : null;
@@ -928,28 +930,28 @@ public class BeachArcade implements Bot {
         }
 
         private Territory partialRatio(Continent continent) {
-			Territory port = continent.minPort(safe);
-			Territory defend = continent.territories().max(Territory::compareAdjacents).filter(curr -> curr.compareToAdjacents() < aggressive).orElse(null);
+            Territory port = continent.minPort(safe);
+            Territory defend = continent.territories().max(Territory::compareAdjacents).filter(curr -> curr.compareToAdjacents() < aggressive).orElse(null);
             return (port != null) ? port : defend;
         }
 
-		private final Check partial = check -> check != null && map.belongsTo(check.id) && check.compareToAdjacents() <= aggressive;
-		private final Check below = check -> check != null && map.belongsTo(check.id);
+        private final Check partial = check -> check != null && map.belongsTo(check.id) && check.compareToAdjacents() <= aggressive;
+        private final Check below = check -> check != null && map.belongsTo(check.id);
 
-		private Territory findNextToAdjacent(Continent continent, Check filter) {
-			for (Territory curr : continent) {
-				if (!curr.belongsTo(continent.botID)) {
-					System.out.println(continent.name + " find next to adjacent " + curr);
-					for (Territory adjacent : map.getAdjacents(curr.id)) {
-						if (filter.find(adjacent)) {
-							System.out.println("\tSelected:" + adjacent);
-							return adjacent;
-						}
-					}
-				}
-			}
-			return null;
-		}
+        private Territory findNextToAdjacent(Continent continent, Check filter) {
+            for (Territory curr : continent) {
+                if (!curr.belongsTo(continent.botID)) {
+                    System.out.println(continent.name + " find next to adjacent " + curr);
+                    for (Territory adjacent : map.getAdjacents(curr.id)) {
+                        if (filter.find(adjacent)) {
+                            System.out.println("\tSelected:" + adjacent);
+                            return adjacent;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
 
         private Territory belowRatio(Continent continent) {
             Territory temp = continent.territories().max(Territory::maxCompare).orElse(null);
@@ -991,8 +993,84 @@ public class BeachArcade implements Bot {
         // ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
         @Override
         public String getCommand() {
+            String command = "skip";
+            int numTroops = 1;
+            double THRESHOLD = .6; //! WHAT IS THE THRESHY?
+            Territory[] rawCommand = null;
+            for (int i = 0; i < GameData.NUM_CONTINENTS - 1; i++) { //Traverse thru all continents with the highest priority first
+                if (map.getContinent(i).ratio() < 1) {
+                    rawCommand = conquerRemainingTerritories(map.getContinent(i));
+                } else if (map.getContinent(i).ratio() == 1) {
 
+                    rawCommand = conquerRemainingTerritories(findAdjContinent(map.getContinent(i)));
+                }
+
+            }
+            if(rawCommand == null){
+                System.out.println("For some reason you can't attack");
+                 command = "skip";
+            } else {
+                if(rawCommand[0].numUnits <= 3){
+                    numTroops = rawCommand[0].numUnits - 1;
+                } else {
+                    numTroops = 3;
+                    command = rawCommand[0].name + " " + rawCommand[1] + " " + numTroops;
+                }
+            }
+            return command;
+        }
+
+        public Territory[] conquerRemainingTerritories(Continent continent) { //goes thorugh all territories in the continent, f
+            Territory[] allTerritories = continent.getTerritories();
+            Territory[] adjacentTerritories;
+            Territory[] attackDefend =  new Territory[2];
+            String defender;
+            for (Territory currentTerritory : allTerritories) {
+                if(!currentTerritory.belongsTo(map.getBotID())) {
+                    adjacentTerritories = map.getAdjacents(currentTerritory.id);
+                    for (Territory adj : adjacentTerritories) { //cycle through adjacents to the current territory
+                        if (adj.belongsTo(map.getBotID()) && adj.numUnits >= currentTerritory.numUnits) {
+//                        botAttacking = adj;
+//                        enemyDefending = currentTerritory;
+                        attackDefend[0] = adj;
+                        attackDefend[1] = currentTerritory;
+                        return attackDefend;
+                        }
+                    }
+                }
+            }
             return null;
+        }
+
+        /**
+         * Finds a continent adjacent to the one that is completely controlled by the bot
+         * NOTE: May get locked
+         * Ex: Australia is 100% and Asia is 100%
+         * Maybe recursively call it with a 100% continent?
+         * @param continent
+         * @return
+         */
+        public Continent findAdjContinent(Continent continent) {
+            Continent targetContinent = null;
+            Continent tempContinent;
+            ArrayList<Continent> adjacents;
+            for (Territory t : continent) { // Go through all territories in the continent
+                for (int id : GameData.ADJACENT[t.id]) { // Go through all the adjacents
+                    //find ones in a different continent
+                    tempContinent = map.getContinent(GameData.CONTINENT_IDS[id]);
+                    if (tempContinent.id != continent.id && tempContinent.ratio() != 1) { //When the territory is in a different continent and not 100%
+                        if (targetContinent == null) {
+                            targetContinent = tempContinent; //set target continent to the first adjacent if its null
+                        } else if (targetContinent.ratio() > tempContinent.ratio()) {
+                            targetContinent = tempContinent;
+                        }
+                    }
+                }
+            }
+            if (targetContinent == null) {
+                throw new IllegalStateException("No Adjacent continent was found");
+            }
+            return targetContinent;
         }
 
         @Override
@@ -1007,14 +1085,16 @@ public class BeachArcade implements Bot {
 
         @Override
         public String getCommand() {
+            String command = "";
             ArrayList<Territory> startingTerritories = findStartingTerritories();
             Territory startingTerritory = null;
             Territory targetTerritory = null;
+
             boolean checkEnd = true;
             for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
                 System.out.println(map.getContinent(i));
             }
-            for (int i = 0; checkEnd  && i < GameData.NUM_CONTINENTS; ++i) {
+            for (int i = 0; checkEnd && i < GameData.NUM_CONTINENTS; ++i) {
                 if (map.getContinent(i).ratio() == 1)
                     targetTerritory = fullRatio(map.getContinent(i));
                 else if (map.getContinent(i).ratio() >= ratio) //kinda like spread em out so that you can wall off your continent and attack
@@ -1024,13 +1104,15 @@ public class BeachArcade implements Bot {
 
                 startingTerritory = connection(startingTerritories, targetTerritory); //returns the best point to start from
 
-                if(startingTerritory != null && targetTerritory != null){
+                if (startingTerritory != null && targetTerritory != null) {
                     checkEnd = false;
                     System.out.println(startingTerritory + " and " + targetTerritory + " were chosen to be starting and target");
                 }
 
             }
-            if(startingTerritory == null || targetTerritory == null)
+            if(startingTerritory == null && targetTerritory != null)
+
+            if (startingTerritory == null || targetTerritory == null)
                 throw new IllegalStateException("There are no nice way of fortifying with this continent. Every continent in the queue was incompatible");
 
 
@@ -1066,6 +1148,7 @@ public class BeachArcade implements Bot {
         }
 
     }
+
     private ArrayList<Territory> findStartingTerritories() {
         ArrayList<Territory> potentialStartingPoints = new ArrayList<>();
         for (Continent c : map) {//find the largest bot-owned territory that is surrounded by friendly adjacents
