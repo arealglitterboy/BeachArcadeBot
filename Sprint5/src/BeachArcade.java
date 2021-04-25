@@ -609,6 +609,21 @@ public class BeachArcade implements Bot {
             return (portList.size() > 0 && portList.get(0).compareToAdjacents() > safe) ? portList.get(0) : null;
         }
 
+        private List<Territory> findOwnTerritories(Territory territory, List<Territory> list) {
+		    for (Territory adjacent : map.getAdjacents(territory.id)) {
+		        if (adjacent.belongsTo(map.getBotID()) && !list.contains(adjacent)) {
+		            list.add(adjacent);
+		            System.out.println(adjacent);
+		            findOwnTerritories(adjacent, list);
+                }
+            }
+		    return list;
+        }
+
+        public List<Territory> ownTerritoriesConnected(int territory) {
+		    return findOwnTerritories(getTerritory(territory), new ArrayList<>());
+        }
+
         public String toString() {
             return name + ", " + id;
         }
@@ -869,19 +884,11 @@ public class BeachArcade implements Bot {
 		private final Find partial2 = continent -> findNextToAdjacent(continent, check -> check != null && map.belongsTo(check.id));
 		private final Find lastSearch = this::belowRatio;
 
-//        private Territory fullRatio(Continent continent) {
-//            return continent.minPort(safe);  // * Get the port with the lowest proportion of troops to adversaries, or null if safe
-//        }
-
         private Territory partialRatio(Continent continent) {
             Territory port = continent.minPort(safe);
             Territory defend = continent.territories().max(Territory::compareAdjacents).filter(curr -> curr.compareToAdjacents() < aggressive).orElse(null);
             return (port != null) ? port : defend;
         }
-//
-//        private final Check partial = check -> check != null && map.belongsTo(check.id) && check.compareToAdjacents() <= aggressive;
-//        private final Check below = check -> check != null && map.belongsTo(check.id);
-
 
         private Territory findNextToAdjacent(Continent continent, Check filter) {
             for (Territory curr : continent) {
@@ -915,7 +922,7 @@ public class BeachArcade implements Bot {
     }
 
     private class MoveIn extends Turn {
-
+        // ! SEE DISCORD FOR DETAILS BEFORE IMPLEMENTING
         @Override
         public String getCommand() {
             return "1";
@@ -1030,7 +1037,6 @@ public class BeachArcade implements Bot {
             ArrayList<Territory> startingTerritories = findStartingTerritories();
             Territory startingTerritory = null;
             Territory targetTerritory = null;
-
             boolean checkEnd = true;
             for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
                 System.out.println(map.getContinent(i));
@@ -1132,6 +1138,40 @@ public class BeachArcade implements Bot {
 
     }
     private Territory partialRatio(Continent continent){// Focus on placing troops near the country with the most troops that isn't owned by the bot   PURE FRONT LINES
+//        for (Territory territory : continent) {
+//            List<Territory> list = continent.ownTerritoriesConnected(territory.id);
+//            if (list.size() > 4) {
+//                list.sort(Territory::maxCompare);
+//                list.get()
+//            }
+//        }
+//       Territory maxThreat = null;
+//        Territory maxTroops = null;
+//        Territory selection = null;
+//        while (selection == null){
+//            for (Territory territory : continent) {
+//                if (territory.belongsTo(map.getBotID())) {
+//                    if (maxTroops == null) {
+//                        maxTroops = territory;
+//                    } else if (maxTroops.numUnits < territory.numUnits) {
+//                        maxTroops = territory;
+//                    }
+//                }
+//            }
+//        }
+//        for (Territory currentTerritory : continent.getTerritories()) {
+//            if (currentTerritory.occupierID != map.getBotID()) {
+//                for (Territory adj : map.getAdjacents(currentTerritory.id)) {
+//                    if (maxThreat == null) {
+//                        maxThreat = adj;
+//                    }
+//                    if (adj.belongsTo(map.getBotID()) && currentTerritory.numUnits > maxThreat.numUnits) {
+//                        maxThreat = adj;
+//                    }
+//                }
+//            }
+//        }
+//        return maxThreat;
         Territory[] adjacentTerritories;
         Territory[] allTerritories = continent.getTerritories();
         Territory maxThreat = new Territory(0);
