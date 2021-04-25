@@ -1,6 +1,7 @@
 /* BeachArcade bot: Ethan Chan, Blake Whittington, Ben Brown */
 
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class BeachArcade implements Bot {
@@ -579,27 +580,24 @@ public class BeachArcade implements Bot {
 
         public Territory minPort(double safe) {
             Territory min = null;
-            double minProportion = 1;
-
+			List<Territory> portList = new ArrayList<>();
 			for (Territory portTerritory : portTerritories) {
-				if (portTerritory.belongsTo(botID)) {
-					if (min == null && portTerritory.compareToOpponent() < safe) {
-						min = portTerritory;
-						minProportion = min.compareToOpponent();
-					} else if (min != null) {
-						double proportion = portTerritory.compareToOpponent();
-						if (proportion < minProportion) {
-							min = portTerritory;
-						}
-					}
-				}
+			    if (portTerritory.belongsTo(botID)) {
+			        portList.add(portTerritory);
+                }
+            }
+			int length = portList.size();
+			if (length > 0) {
+                portList.sort(Territory::compareAdjacents);
+                for (Territory port : portList) {
+                    System.out.println("++++++++++++++++++++++++++\nPortList " + port + ", " + port.compareToAdjacents());
+                }
+                System.out.println("min = " + portList.get(length - 1) + " " + portList.get(length - 1).compareToOpponent());
 			}
 
-			if (min != null && min.compareToOpponent() > safe) {
-				throw new IllegalStateException("We messed up bud");
-			}
+			System.out.println("Min port: " + portList.get(length - 1));
 
-            return (min.compareToAdjacents() < safe) ? min : null;
+            return (portList.get(length - 1).compareToOpponent() < safe) ? portList.get(length - 1) : null;
         }
 
         public String toString() {
@@ -842,6 +840,7 @@ public class BeachArcade implements Bot {
 				System.out.println(map.getContinent(i));
 			}
 			for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
+			    // ? Should probably add some sort of edge case so it doesn't try to reinforce against an unbeatable proportion against it
 				Continent continent = map.getContinent(i);
 				if (continent.ratio() == 1) { // # If the bot owns the whole continent
 					territory = fullRatio(continent);
