@@ -1,6 +1,5 @@
 /* BeachArcade bot: Ethan Chan, Blake Whittington, Ben Brown */
 
-import java.time.temporal.Temporal;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -689,6 +688,11 @@ public class BeachArcade implements Bot {
 			return territories(botID);
 		}
 
+		public Stream<Territory> streamUnowned() {
+			return continent.values().stream().filter(curr -> !curr.belongsTo(botID));
+		}
+
+
 		/**
 		 * <strong>territories()</strong> - Returns a stream of the territories owned by a player in this continent
 		 * @param playerID: id of a player
@@ -747,10 +751,28 @@ public class BeachArcade implements Bot {
 			double counterTroops = 0;
 
 			for (Territory adjacent : map.getAdjacents(id)) {
-				counterTroops += (!adjacent.belongsTo(occupierID)) ? adjacent.numUnits : 0;
+				counterTroops += (adjacent != null && !adjacent.belongsTo(occupierID)) ? adjacent.numUnits : 0;
 			}
 
-			return counterTroops;
+			System.out.println(name + " compare to Adjacents: " + counterTroops/numUnits + ", counter troops = " + counterTroops + " and num units = " + numUnits);
+			return counterTroops/numUnits;
+		}
+
+		public int compareAdjacents(Territory that) {
+			return Integer.compare(this.numAdjacentUnowned(), that.numAdjacentUnowned());
+		}
+
+		public int numAdjacentUnowned() {
+			int count = 0;
+			Territory[] arr = map.getTerritories(id);
+			if (arr.length != 0) {
+				for (Territory territory : arr) {
+					if (!territory.belongsTo(occupierID)) {
+						++count;
+					}
+				}
+			}
+			return count;
 		}
 	}
 
@@ -768,6 +790,10 @@ public class BeachArcade implements Bot {
 		public int compareTo(Decision that) {
 			return this.weight - that.weight;
 		}
+	}
+
+	public interface Check {
+		boolean find(Territory check);
 	}
 
 	private static abstract class Turn {
@@ -823,27 +849,72 @@ public class BeachArcade implements Bot {
 	}
 
 	private class Reinforcement extends Turn {
-		public double ratio = 0.6;
+		public double ratio = 0.3;
+		public double aggressive = 4;
 		public double safe = 0.4;
+
 		@Override
 		public String getCommand() {
-			// ! TEMP
 			Territory territory = null;
+			for (int i = 0; i < GameData.NUM_CONTINENTS; ++i) {
+				System.out.println(map.getContinent(i));
+			}
 			for (int i = 0; territory == null && i < GameData.NUM_CONTINENTS; ++i) {
 				Continent continent = map.getContinent(i);
 				if (continent.ratio() == 1) {
-					territory = continent.minPort(safe); // * Get the port with the lowest proportion of troops to adversaries
-				} else if (continent.proportion() < ratio) {
-
+					territory = fullRatio(continent);
+				} else if (continent.ratio() >= ratio && continent.proportion() < safe) {
+					System.out.println("Ratio is greater than ratio, " + continent);
+					territory = partialRatio(continent);
+				} else if (continent.proportion() >= ratio){
+					System.out.println("Proportion is greater than ratio, " + continent);
+					territory = findNextToAdjacent(continent, below);
+				} else {
+					territory = belowRatio(continent);
 				}
 			}
-			Territory result = map.getContinent(0).territories().min(Territory::maxCompare).orElse(null);
-			if (result == null) {
-				throw new IllegalStateException("Highest priority continent was empty");
-			}else {
-				System.out.println("We chose " + result.name);
+
+			if (territory == null) {
+				territory = map.getContinent(0).territories().min(Territory::maxCompare).orElse(null);
+				if (territory == null) {
+					throw new IllegalStateException("Highest priority continent was empty");
+				}
+			} else {
+				System.out.println("We chose " + territory);
 			}
-			return result.name.replaceAll("\\s+", "") + " " + Math.min(player.getNumUnits(), 2);
+			return territory.name.replaceAll("\\s+", "") + " " + Math.min(player.getNumUnits(), 2);
+		}
+
+		private Territory fullRatio(Continent continent) {
+			return continent.minPort(safe);  // * Get the port with the lowest proportion of troops to adversaries, or null if safe
+		}
+
+		private Territory partialRatio(Continent continent) {
+			return continent.territories().max(Territory::compareAdjacents).filter(curr -> curr.compareToAdjacents() < aggressive).orElse(null);
+		}
+
+		private final Check partial = check -> check != null && check.belongsTo(map.getBotID()) && check.compareToAdjacents() <= aggressive;
+		private final Check below = check -> check != null && check.belongsTo(map.getBotID());
+
+		private Territory findNextToAdjacent(Continent continent, Check filter) {
+			Territory temp;
+			for (Territory curr : continent) {
+				if (!curr.belongsTo(continent.botID)) {
+					System.out.println(continent.name + " find next to adjacent " + curr);
+					temp = Arrays.stream(map.getAdjacents(curr.id)).filter(filter::find).findFirst().orElse(null);
+					if (temp != null) {
+						System.out.println("WE GOT ONE!");
+						return temp;
+					}
+				}
+			}
+//			return continent.streamUnowned().map(curr -> Arrays.stream(map.getAdjacents(curr.id)).filter(filter::find)).findFirst();
+			return null;
+		}
+
+		private Territory belowRatio(Continent continent) {
+			Territory temp = continent.territories().max(Territory::maxCompare).orElse(null);
+			return (temp == null || temp.compareToAdjacents() < ratio) ? null : temp; // * If the territory has enough troops already that it could take on those around it.
 		}
 
 		@Override
