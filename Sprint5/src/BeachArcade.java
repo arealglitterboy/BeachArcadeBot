@@ -1048,8 +1048,9 @@ public class BeachArcade implements Bot {
                 else
                     targetTerritory = subPartialRatio(map.getContinent(i));
 
-                startingTerritory = connection(startingTerritories, targetTerritory); //returns the best point to start from
-
+                if (startingTerritory != null && targetTerritory != null) {
+                    startingTerritory = connection(startingTerritories, targetTerritory); //returns the best point to start from
+                }
                 if (startingTerritory != null && targetTerritory != null) {
                     checkEnd = false;
                     System.out.println(startingTerritory + " and " + targetTerritory + " were chosen to be starting and target");
@@ -1107,9 +1108,10 @@ public class BeachArcade implements Bot {
                         check = false;
                     }
                 }
-                if (check && currentTerritory.numUnits > 2)
+                if (check && currentTerritory.numUnits > 2) {
                     potentialStartingPoints.add(currentTerritory);
-                check = true;
+                    check = true;
+                }
             }
         }
         //sort them by largest troop count
